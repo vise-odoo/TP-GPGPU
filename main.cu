@@ -14,6 +14,16 @@
 #define TRAIN_SIZE 60000
 #define TEST_SIZE 10000
 
+#define CREATE_CUDAEVENT cudaEvent_t start, stop; \
+cudaEventCreate(&start); \
+cudaEventCreate(&stop);
+#define START_CUDAEVENT cudaEventRecord(start, 0);
+#define STOP_AND_PRINT_CUDAEVENT(txt) cudaEventRecord(stop, 0);\
+cudaEventSynchronize(stop);\
+{float elapsedTime;\
+cudaEventElapsedTime(&elapsedTime, start, stop);\
+printf("Time to %s %3.1f ms\n", #txt, elapsedTime);}
+
 void populate_minibatch(double *x, double* y, unsigned* minibatch_idx, unsigned minibatch_size, image * img, unsigned img_size, byte* label, unsigned label_size);
 
 void zero_to_n(unsigned n, unsigned* t)
@@ -107,13 +117,17 @@ void populate_minibatch(double * x, double * y, unsigned * minibatch_idx, unsign
 
 int main(int argc, char *argv[])
 {
+    CREATE_CUDAEVENT
+    START_CUDAEVENT
     srand(time(0));
     unsigned datasize, ntest;
     image* train_img = read_images("train-images-idx3-ubyte", &datasize);
     byte* train_label = read_labels("train-labels-idx1-ubyte", &datasize);
     image* test_img = read_images("t10k-images-idx3-ubyte", &ntest);
     byte* test_label = read_labels("t10k-labels-idx1-ubyte", &ntest);
+    STOP_AND_PRINT_CUDAEVENT(load dataset)
 
+    START_CUDAEVENT
     ann_t * nn;
     double alpha = 0.05;
     unsigned minibatch_size = 16;
@@ -121,6 +135,7 @@ int main(int argc, char *argv[])
     unsigned nneurons_per_layer[3] = {28*28, 30, 10};
     nn = create_ann(alpha, minibatch_size, number_of_layers, nneurons_per_layer);
     //print_nn(nn);
+    STOP_AND_PRINT_CUDAEVENT(ANN creation)
 
     printf("starting accuracy %lf\n", accuracy(test_img, test_label, ntest, minibatch_size, nn));
 
@@ -129,6 +144,7 @@ int main(int argc, char *argv[])
     double *y = (double *) malloc(10 * minibatch_size * sizeof( double ));
     matrix_t *out = alloc_matrix(10, minibatch_size);
     
+    START_CUDAEVENT
     for (int epoch = 0; epoch < 40; epoch ++)
     {
         printf("start learning epoch %d\n", epoch);
@@ -145,6 +161,7 @@ int main(int argc, char *argv[])
         }     
         printf("epoch %d accuracy %lf\n", epoch, accuracy(test_img, test_label, ntest, minibatch_size, nn));
     }
+    STOP_AND_PRINT_CUDAEVENT(Time to train)
 
     free(x);
     free(y);
