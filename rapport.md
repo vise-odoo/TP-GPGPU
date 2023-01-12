@@ -27,5 +27,5 @@ unsigned idx[datasize]; // l. 50
 
 Utiliser la commande suivante pour compiler :
 ```bash
-nvcc -o tp main.c matrix.c ann.c mnist.c
+nvcc -o tp main.cu matrix.cu ann.cu mnist.cu
 ```
