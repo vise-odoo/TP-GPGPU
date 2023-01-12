@@ -121,52 +121,16 @@ void print_nn(ann_t *nn)
 
 void forward(ann_t *nn, double (*activation_function)(double))
 {
-    //unsigned int *h_weights, *h_activations , *h_z1 , *h_biases, *h_one, *h_z2 ;
-    unsigned int *d_weights, *d_activations , *d_z1, *d_biases, *d_one, *d_z2 ;
-    dim3 blocksPerGrid = 20;
-    dim3 threadsPerBlock = (32,32,1);
-
     for (int l = 1; l < nn->number_of_layers; l++)
     {
         matrix_t *z1 = alloc_matrix(nn->layers[l]->number_of_neurons, nn->minibatch_size);
         matrix_t *z2 = alloc_matrix(nn->layers[l]->number_of_neurons, nn->minibatch_size);
         matrix_t *one = alloc_matrix(1, nn->minibatch_size);
-
-/*
-        // Allocation on the CPU side
-        h_weights = (unsigned int*)malloc(nn->layers[l]->weights->rows *nn->layers[l]->weights->columns *sizeof(unsigned int));
-        h_activations = (unsigned int*)malloc(nn->layers[l-1]->activations->rows *nn->layers[l-1]->activations->columns *sizeof(unsigned int));
-        h_z1 = (unsigned int*)malloc(z1->rows *z1->columns *sizeof(unsigned int));
-        h_biases = (unsigned int*)malloc(nn->layers[l]->biases->rows *nn->layers[l]->biases->columns *sizeof(unsigned int));
-        h_one = (unsigned int*)malloc(one->rows * one->columns *sizeof(unsigned int));
-        h_z2 = (unsigned int*)malloc(z2->rows *z2->columns *sizeof(unsigned int));
-*/
-
-        // allocate the memory on the GPU
-        cudaMalloc((void**)&d_weights, nn->layers[l]->weights->rows *nn->layers[l]->weights->columns *sizeof(unsigned int));
-        cudaMalloc((void**)&d_activations, nn->layers[l-1]->activations->rows *nn->layers[l-1]->activations->columns *sizeof(unsigned int));
-        cudaMalloc((void**)&d_z1, z1->rows *z1->columns *sizeof(unsigned int));
-        cudaMalloc((void**)&d_biases, nn->layers[l]->biases->rows *nn->layers[l]->biases->columns *sizeof(unsigned int));
-        cudaMalloc((void**)&d_one, one->rows * one->columns *sizeof(unsigned int));
-        cudaMalloc((void**)&d_z2, z2->rows *z2->columns *sizeof(unsigned int));
-
         for (int idx = 0; idx < one->columns*one->rows; idx++)
             one->m[idx] = 1.0;
 
-        // copy the arrays to the GPU
-        cudaMemcpy( d_weights, nn->layers[l]->weights->m, nn->layers[l]->weights->rows *nn->layers[l]->weights->columns *sizeof(unsigned int), cudaMemcpyHostToDevice );
-        cudaMemcpy( d_activations, nn->layers[l-1]->activations->m, nn->layers[l-1]->activations->rows *nn->layers[l-1]->activations->columns *sizeof(unsigned int), cudaMemcpyHostToDevice ); 
-        cudaMemcpy( d_z1, z1->m, z1->rows *z1->columns *sizeof(unsigned int), cudaMemcpyHostToDevice ); 
-        cudaMemcpy( d_biases, nn->layers[l]->biases->m, nn->layers[l]->biases->rows *nn->layers[l]->biases->columns *sizeof(unsigned int), cudaMemcpyHostToDevice );
-        cudaMemcpy( d_one, one->m, one->rows *one->columns *sizeof(unsigned int), cudaMemcpyHostToDevice ); 
-        cudaMemcpy( d_z2, z2->m, z2->rows *z2->columns *sizeof(unsigned int), cudaMemcpyHostToDevice );
-
-        matrixMultiplicationKernelUnshared<<<blocksPerGrid, threadsPerBlock>>>(d_weights, d_activations, d_z1, nn->layers[l]->weights->rows, nn->layers[l]->weights->columns, nn->layers[l]->activations->columns); // z1 <- w^l x a^(l-1)
-        cudaMemcpy( z1->m, d_z1, z1->rows *z1->columns *sizeof(unsigned int), cudaMemcpyDeviceToHost );
-     
-        matrixMultiplicationKernelUnshared<<<blocksPerGrid, threadsPerBlock>>>(d_biases, d_one, d_z2, nn->layers[l]->biases->rows, nn->layers[l]->biases->columns, one->columns); // z2 <- b^l x 1 
-        cudaMemcpy( z2->m, d_z2, z2->rows *z2->columns *sizeof(unsigned int), cudaMemcpyDeviceToHost );
-        
+        matrix_dot(nn->layers[l]->weights, nn->layers[l-1]->activations, z1); // z1 <- w^l x a^(l-1)
+        matrix_dot(nn->layers[l]->biases, one, z2); // z2 <- b^l x 1        
         matrix_sum(z1, z2, nn->layers[l]->z); // z^l <- z1 + z2 <=> z^l <- w^l x a^(l-1) + b^l x 1      
 
         matrix_function(nn->layers[l]->z, activation_function, nn->layers[l]->activations); // a^l = f(z^l)
@@ -174,15 +138,7 @@ void forward(ann_t *nn, double (*activation_function)(double))
         destroy_matrix(z1);
         destroy_matrix(z2);
         destroy_matrix(one);
-
-        cudaFree(d_weights);
-        cudaFree(d_activations);
-        cudaFree(d_z1);
-        cudaFree(d_biases);
-        cudaFree(d_one);
-        cudaFree(d_z2);
     }
-
 }
 
 void backward(ann_t *nn, matrix_t *y, double (*derivative_actfunct)(double))

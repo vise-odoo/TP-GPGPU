@@ -110,20 +110,6 @@ void matrix_dot(matrix_t *m1, matrix_t *m2, matrix_t *res)
     }
 }
 
-__global__ void matrixMultiplicationKernelUnshared(unsigned int *m1, unsigned int *m2, unsigned int *res, int m1_rows, int m1_columns, int m2_columns) {
-    int ROW = blockIdx.y*blockDim.y+threadIdx.y;
-    int COL = blockIdx.x*blockDim.x+threadIdx.x;
-
-    float tmpSum = 0;
-    if (ROW < m1_rows && COL < m2_columns) {
-        // Calcul par sous-blocs
-        for (int i = 0; i < m1_columns; i++) {
-            tmpSum += m1[ROW * ((int) m1_columns) + i] * m2[i * ((int) m2_columns) + COL];
-        }
-    }
-    res[ROW * ((int) m2_columns) + COL] = tmpSum;
-}
-
 void matrix_function(matrix_t *m1, double (*f)(double), matrix_t *res)
 {
     assert ( (m1->columns == res->columns) &&             
