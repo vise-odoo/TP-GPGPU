@@ -26,6 +26,8 @@ void matrix_minus(matrix_t *m1, matrix_t *m2, matrix_t *res);
 
 void matrix_dot(matrix_t *m1, matrix_t *m2, matrix_t *res);
 
+__global__ void matrixMultiplicationKernelUnshared(unsigned int *m1, unsigned int *m2, unsigned int *res, int m1_rows, int m1_columns, int m2_columns);
+
 void matrix_function(matrix_t *m1, double (*f)(double), matrix_t *res);
 
 void matrix_transpose(matrix_t *m1, matrix_t *res);

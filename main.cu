@@ -153,7 +153,7 @@ int main(int argc, char *argv[])
     double *y = (double *) malloc(10 * minibatch_size * sizeof( double ));
     matrix_t *out = alloc_matrix(10, minibatch_size);
     
-    for (int epoch = 0; epoch < 2; epoch ++)
+    for (int epoch = 0; epoch < 5; epoch ++)
     {
         START_CPUEVENT
         printf("start learning epoch %d\n", epoch);
