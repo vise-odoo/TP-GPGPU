@@ -5,6 +5,7 @@
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
+// TODO : matrix dot , matrix hadamard, matrix transpose
 matrix_t * alloc_matrix(unsigned rows, unsigned columns)
 {
     matrix_t * res = (matrix_t*) malloc( sizeof(matrix_t) );
@@ -74,6 +75,21 @@ void matrix_sum(matrix_t *m1, matrix_t *m2, matrix_t *res)
     }
 }
 
+__device__ void matrix_sum_Kernel(matrix_t *m1, matrix_t *m2, matrix_t *res)
+{
+    assert ( (m1->columns == m2->columns)  &&
+             (m1->columns == res->columns) &&
+             (m1->rows == m2->rows)        &&
+             (m1->rows == res->rows));
+
+    unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
+
+    if (idx < m1->rows * m1->columns)
+    { 
+        res->m[idx] = m1->m[idx] + m2->m[idx];
+    }
+}
+
 void matrix_minus(matrix_t *m1, matrix_t *m2, matrix_t *res)
 {
     assert ( (m1->columns == m2->columns)  &&
@@ -83,6 +99,21 @@ void matrix_minus(matrix_t *m1, matrix_t *m2, matrix_t *res)
              
     for (int idx = 0; idx < m1->rows * m1->columns; idx ++)
     {
+        res->m[idx] = m1->m[idx] - m2->m[idx];
+    }
+}
+
+__device__ void matrix_minus_Kernel(matrix_t *m1, matrix_t *m2, matrix_t *res)
+{
+    assert ( (m1->columns == m2->columns)  &&
+             (m1->columns == res->columns) &&
+             (m1->rows == m2->rows)        &&
+             (m1->rows == res->rows));
+
+    unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
+
+    if (idx < m1->rows * m1->columns)
+    { 
         res->m[idx] = m1->m[idx] - m2->m[idx];
     }
 }
@@ -121,6 +152,19 @@ void matrix_function(matrix_t *m1, double (*f)(double), matrix_t *res)
     }
 }
 
+__device__ void matrix_function_Kernel(matrix_t *m1, double (*f)(double), matrix_t *res)
+{
+    assert ( (m1->columns == res->columns) &&             
+            (m1->rows == res->rows));
+
+    unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
+
+    if (idx < m1->rows * m1->columns)
+    { 
+        res->m[idx] = f(m1->m[idx]);
+    }
+}
+
 void matrix_transpose(matrix_t *m1, matrix_t *res)
 {
     assert ( (m1->columns == res->rows) &&             
@@ -142,6 +186,19 @@ void matrix_scalar(matrix_t *m1, double s, matrix_t *res)
 
     for (int idx = 0; idx < m1->columns*m1->rows; idx ++)
     {
+        res->m[idx] = m1->m[idx] * s;
+    }
+}
+
+__device__ void matrix_scalar_Kernel(matrix_t *m1, double s, matrix_t *res)
+{
+    assert ( (m1->rows == res->rows) &&             
+             (m1->columns == res->columns));
+
+    unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
+
+    if (idx < m1->rows * m1->columns)
+    { 
         res->m[idx] = m1->m[idx] * s;
     }
 }

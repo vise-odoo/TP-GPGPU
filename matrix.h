@@ -34,4 +34,13 @@ void matrix_scalar(matrix_t *m1, double s, matrix_t *res);
 
 void matrix_memcpy(matrix_t *dest, const matrix_t *src);
 
+__device__ void matrix_sum_Kernel(matrix_t *m1, matrix_t *m2, matrix_t *res);
+
+__device__ void matrix_minus_Kernel(matrix_t *m1, matrix_t *m2, matrix_t *res);
+
+__device__ void matrix_scalar_Kernel(matrix_t *m1, double s, matrix_t *res);
+
+__device__ void matrix_function_Kernel(matrix_t *m1, double (*f)(double), matrix_t *res);
+
+
 #endif
