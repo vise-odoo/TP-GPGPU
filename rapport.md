@@ -24,3 +24,8 @@ Dans `main.c`, la valeur de `datasize` doit être constante car elle définit un
 unsigned idx[datasize]; // l. 50
 ...
 ```
+
+Utiliser la commande suivante pour compiler :
+```bash
+nvcc -o tp main.c matrix.c ann.c mnist.c
+```
