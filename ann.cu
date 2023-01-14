@@ -13,8 +13,8 @@ double normalRand(double mu, double sigma);
 void init_weight(matrix_t* w, unsigned nneurones_prev);
 void print_layer(layer_t *layer);
 
-bool generate = false;
-double z1 = 0;
+bool generate;
+double z1;
 
 double normalRand(double mu, double sigma)
 {
@@ -50,6 +50,8 @@ void init_weight(matrix_t* w, unsigned nneurones_prev)
 
 ann_t * create_ann(double alpha, unsigned minibatch_size, unsigned number_of_layers, unsigned* nneurons_per_layer)
 {
+    generate = false; // Ici ces variables ne sont affectées qu'une seule fois, elles sont utilisées dans normalRand
+    z1 = 0;
     ann_t * nn = (ann_t *)malloc(sizeof(ann_t));
 
     nn->layers = (layer_t **)malloc(number_of_layers * sizeof(layer_t *));

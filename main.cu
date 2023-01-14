@@ -67,12 +67,11 @@ double dsigmoid(double x)
 double accuracy(image* test_img, byte* test_label, unsigned datasize, unsigned minibatch_size, ann_t *nn)
 {
     unsigned good = 0;
-    unsigned idx[TRAIN_SIZE];   
+    unsigned idx[TEST_SIZE];   
     double *x = (double *) malloc( 28 * 28 * minibatch_size * sizeof(double));
     double *y = (double *) malloc( 10 * minibatch_size * sizeof(double) );
 
     zero_to_n(datasize, idx);
-    
     for (int i = 0; i < datasize - minibatch_size; i+= minibatch_size)
     {        
         populate_minibatch(x, y, &idx[i], minibatch_size, test_img, 28*28, test_label, 10);
@@ -153,7 +152,7 @@ int main(int argc, char *argv[])
     double *y = (double *) malloc(10 * minibatch_size * sizeof( double ));
     matrix_t *out = alloc_matrix(10, minibatch_size);
     
-    for (int epoch = 0; epoch < 2; epoch ++)
+    for (int epoch = 0; epoch < 40; epoch ++)
     {
         START_CPUEVENT
         printf("start learning epoch %d\n", epoch);
