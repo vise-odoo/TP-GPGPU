@@ -1,5 +1,5 @@
 #define _USE_MATH_DEFINES
-#include "ann.h"
+#include "ann.cuh"
 #include "matrix.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -68,6 +68,11 @@ ann_t * create_ann(double alpha, unsigned minibatch_size, unsigned number_of_lay
     return nn;
 }
 
+// __global__ void move_ann_device(ann_t * d_nn, ann_t * nn) {
+//     cudaMalloc((void **) &d_nn, sizeof(nn));
+//     cudaMemcpy(d_nn, nn, sizeof(nn), cudaMemcpyHostToDevice);
+// }
+
 layer_t * create_layer(unsigned layer_number, unsigned number_of_neurons, unsigned nneurons_previous_layer, unsigned minibatch_size)
 {
     layer_t * layer = (layer_t*) malloc(sizeof(layer_t));
@@ -111,7 +116,7 @@ void print_layer(layer_t *layer)
     
 }
 
-void print_nn(ann_t *nn)
+__host__ void print_nn(ann_t *nn)
 {
     printf("ANN -- nlayers:%d, alpha:%lf, minibatch size: %d\n", nn->number_of_layers, nn->alpha, nn->minibatch_size);
     for (int l = 0; l < nn->number_of_layers; l++)
@@ -136,6 +141,28 @@ void forward(ann_t *nn, double (*activation_function)(double))
         matrix_sum(z1, z2, nn->layers[l]->z); // z^l <- z1 + z2 <=> z^l <- w^l x a^(l-1) + b^l x 1      
 
         matrix_function(nn->layers[l]->z, activation_function, nn->layers[l]->activations); // a^l = f(z^l)
+     
+        destroy_matrix(z1);
+        destroy_matrix(z2);
+        destroy_matrix(one);
+    }
+}
+
+__global__ void d_forward(ann_t *d_nn, double (*d_activation_function)(double))
+{
+    for (int l = 1; l < d_nn->number_of_layers; l++)
+    {
+        matrix_t *z1 = alloc_matrix(d_nn->layers[l]->number_of_neurons, d_nn->minibatch_size);
+        matrix_t *z2 = alloc_matrix(d_nn->layers[l]->number_of_neurons, d_nn->minibatch_size);
+        matrix_t *one = alloc_matrix(1, d_nn->minibatch_size);
+        for (int idx = 0; idx < one->columns*one->rows; idx++)
+            one->m[idx] = 1.0;
+
+        matrix_dot(d_nn->layers[l]->weights, d_nn->layers[l-1]->activations, z1); // z1 <- w^l x a^(l-1)
+        matrix_dot(d_nn->layers[l]->biases, one, z2); // z2 <- b^l x 1        
+        matrix_sum(z1, z2, d_nn->layers[l]->z); // z^l <- z1 + z2 <=> z^l <- w^l x a^(l-1) + b^l x 1      
+
+        matrix_function_Kernel(d_nn->layers[l]->z, d_activation_function, d_nn->layers[l]->activations); // a^l = f(z^l)
      
         destroy_matrix(z1);
         destroy_matrix(z2);

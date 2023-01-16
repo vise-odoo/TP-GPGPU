@@ -70,3 +70,10 @@ On remarque que l'on est limité par la vitesse de la clock, cependant, on peut 
 
 ## Partie 2 : optimisation en utilisant le GPU
 
+En parcourant le fichier `main.cu`, on peut déterminer les tâches à faire pour exécuter le code sur GPU.
+- placer le réseau de neurones sur GPU
+  - en faisant cela, il n'est pas possible de `print_nn` le réseau directement depuis le GPU, il faut d'abord copier le réseau sur CPU. Cela vient du fait que `print_nn` fait appel à différentes fonctions qui sont définies sur le `__host__`.
+  - l'extension de `ann.h` devient `ann.cuh` car il est définie une fonction `__global__`.
+- placer les données sur GPU
+- modifier la fonction `accuracy`
+  - on définit une nouvelle fonction `d_accuracy` qui renvoie `void` (du fait qu'une fonction `__global` ne peut pas renvoyer une valeur)

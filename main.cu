@@ -6,7 +6,7 @@
 
 #include "mnist.h"
 #include "matrix.h"
-#include "ann.h"
+#include "ann.cuh"
 #include <math.h>
 #include <string.h>
 #include <time.h>
@@ -41,6 +41,14 @@ void zero_to_n(unsigned n, unsigned* t)
     }
 }
 
+__global__ void d_zero_to_n(unsigned n, unsigned* t)
+{
+    for (unsigned i = 0; i < n; i++)
+    {
+        t[i] = i;
+    }
+}
+
 void shuffle(unsigned *t, const unsigned size, const unsigned number_of_switch)
 {
     zero_to_n(size, t);
@@ -59,9 +67,17 @@ double sigmoid(double x)
     return 1 / (1 + exp(-x));
 }
 
+__global__ double d_sigmoid(double x) {
+    return 1 / (1 + exp(-x));
+}
+
 double dsigmoid(double x)
 {
     return sigmoid(x)*(1-sigmoid(x));
+}
+
+__global__ void d_dsigmoid(double x, double* res) {
+    *res = (1 / (1 + exp(-x)))*(1-(1 / (1 + exp(-x))));
 }
 
 double accuracy(image* test_img, byte* test_label, unsigned datasize, unsigned minibatch_size, ann_t *nn)
@@ -103,7 +119,69 @@ double accuracy(image* test_img, byte* test_label, unsigned datasize, unsigned m
     return (100.0* (double) (good) / ntests );
 }
 
+__global__ void d_accuracy(image* d_test_img, byte* d_test_label, unsigned datasize, unsigned minibatch_size, ann_t* d_nn, double* acc) {
+    unsigned good = 0;
+    unsigned idx[TEST_SIZE];
+    double *d_x;
+    double *d_y;
+    cudaMalloc((void **) &d_x, 28 * 28 * minibatch_size * sizeof(double));
+    cudaMalloc((void **) &d_y, 10 * minibatch_size * sizeof(double));
+
+    unsigned d_datasize;
+    cudaMalloc((void **) &d_datasize, sizeof(datasize));
+    cudaMemcpy(&d_datasize, &datasize, sizeof(datasize), cudaMemcpyHostToDevice);
+
+    d_zero_to_n<<<2048*2048, 1024>>>(d_datasize, idx); // parallélisable si datasize et idx dans GPU
+    for (int i = 0; i < datasize - minibatch_size; i+= minibatch_size)
+    {        
+        d_populate_minibatch(d_x, d_y, &idx[i], minibatch_size, d_test_img, 28*28, d_test_label, 10);  
+        cudaMemcpy(d_nn->layers[0]->activations->m, d_x, 28*28 * minibatch_size * sizeof(double), cudaMemcpyDeviceToDevice);
+        
+        d_forward<<<2048*2048, 1024>>>(d_nn, d_sigmoid);
+        for (int col = 0; col < minibatch_size; col ++)
+        {
+            int idxTrainingData = col + i ;
+            double max = 0;
+            unsigned idx_max = 0;
+            for (int row = 0; row < 10; row++){
+                int idx = col + row * minibatch_size;
+                if (d_nn->layers[d_nn->number_of_layers-1]->activations->m[idx] > max){
+                    max = d_nn->layers[d_nn->number_of_layers-1]->activations->m[idx];
+                    idx_max = row;
+                }
+            }
+            if (idx_max == d_test_label[idxTrainingData])
+            {
+                good ++;
+            }
+        }
+    }    
+    cudaFree(d_x);
+    cudaFree(d_y);
+
+    unsigned ntests = (datasize/minibatch_size) * minibatch_size;
+    *acc = (100.0* (double) (good) / ntests);
+}
+
 void populate_minibatch(double * x, double * y, unsigned * minibatch_idx, unsigned minibatch_size, image * img, unsigned img_size, byte* label, unsigned label_size)
+{
+    for (int col = 0; col < minibatch_size; col ++)
+    {
+        for (int row = 0; row < img_size; row ++)
+        {
+            x[row * minibatch_size + col] = (double) img[minibatch_idx[col]][row]/255.;
+        }
+
+        for (int row = 0; row < 10; row ++)
+        {
+            y[row * minibatch_size + col] = 0.0;
+        }
+
+        y[ label[minibatch_idx[col]] * minibatch_size + col] = 1.0;
+    }
+}
+
+__global__ void d_populate_minibatch(double * x, double * y, unsigned * minibatch_idx, unsigned minibatch_size, image * img, unsigned img_size, byte* label, unsigned label_size)
 {
     for (int col = 0; col < minibatch_size; col ++)
     {
@@ -135,6 +213,20 @@ int main(int argc, char *argv[])
     byte* test_label = read_labels("t10k-labels-idx1-ubyte", &ntest);
     STOP_AND_PRINT_CPUEVENT(load dataset)
 
+    // move data to GPU
+    image* d_train_img;
+    byte* d_train_label;
+    image* d_test_img;
+    byte* d_test_label;
+    cudaMalloc((void **) &d_train_img, sizeof(train_img));
+    cudaMalloc((void **) &d_train_label, sizeof(train_label));
+    cudaMalloc((void **) &d_test_img, sizeof(test_img));
+    cudaMalloc((void **) &d_test_label, sizeof(test_label));
+    cudaMemcpy(d_train_img, train_img, sizeof(train_img), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_train_label, train_label, sizeof(train_label), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_test_img, test_img, sizeof(test_img), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_test_label, test_label, sizeof(test_label), cudaMemcpyHostToDevice);
+
     START_CPUEVENT
     ann_t * nn;
     double alpha = 0.05;
@@ -142,10 +234,16 @@ int main(int argc, char *argv[])
     unsigned number_of_layers = 3;
     unsigned nneurons_per_layer[3] = {28*28, 30, 10};
     nn = create_ann(alpha, minibatch_size, number_of_layers, nneurons_per_layer);
-    //print_nn(nn);
+    ann_t * d_nn;
+    cudaMalloc((void **) &d_nn, sizeof(nn));
+    cudaMemcpy(d_nn, nn, sizeof(d_nn), cudaMemcpyHostToDevice);
+    print_nn(nn); // only works on CPU
     STOP_AND_PRINT_CPUEVENT(ANN creation)
 
-    printf("starting accuracy %lf\n", accuracy(test_img, test_label, ntest, minibatch_size, nn));
+    double *acc;
+    d_accuracy<<<2048*2048, 1024>>>(d_test_img, d_test_label, ntest, minibatch_size, d_nn, acc); // update la valeur de acc
+    printf("starting accuracy %lf\n", acc);
+    // printf("starting accuracy %lf\n", accuracy(test_img, test_label, ntest, minibatch_size, nn));
 
     unsigned *shuffled_idx = (unsigned *)malloc(datasize*sizeof(unsigned));
     double *x = (double *) malloc(28*28 * minibatch_size * sizeof( double ));
@@ -173,7 +271,12 @@ int main(int argc, char *argv[])
     free(x);
     free(y);
     free(shuffled_idx);
-    destroy_matrix(out);   
+    destroy_matrix(out);
+
+    free(acc);
+
+    cudaMemcpy(nn, d_nn, sizeof(nn), cudaMemcpyDeviceToHost);
+    cudaFree(d_nn);
     
     return 0;
 }
