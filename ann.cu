@@ -148,7 +148,7 @@ void forward(ann_t *nn, double (*activation_function)(double))
     }
 }
 
-__global__ void d_forward(ann_t *d_nn, double (*d_activation_function)(double))
+__device__ void d_forward(ann_t *d_nn, double (*d_activation_function)(double))
 {
     for (int l = 1; l < d_nn->number_of_layers; l++)
     {

@@ -67,7 +67,7 @@ double sigmoid(double x)
     return 1 / (1 + exp(-x));
 }
 
-__global__ double d_sigmoid(double x) {
+__device__ double d_sigmoid(double x) {
     return 1 / (1 + exp(-x));
 }
 
@@ -76,7 +76,7 @@ double dsigmoid(double x)
     return sigmoid(x)*(1-sigmoid(x));
 }
 
-__global__ void d_dsigmoid(double x, double* res) {
+__device__ void d_dsigmoid(double x, double* res) {
     *res = (1 / (1 + exp(-x)))*(1-(1 / (1 + exp(-x))));
 }
 
@@ -181,7 +181,7 @@ void populate_minibatch(double * x, double * y, unsigned * minibatch_idx, unsign
     }
 }
 
-__global__ void d_populate_minibatch(double * x, double * y, unsigned * minibatch_idx, unsigned minibatch_size, image * img, unsigned img_size, byte* label, unsigned label_size)
+__device__ void d_populate_minibatch(double * x, double * y, unsigned * minibatch_idx, unsigned minibatch_size, image * img, unsigned img_size, byte* label, unsigned label_size)
 {
     for (int col = 0; col < minibatch_size; col ++)
     {
@@ -240,9 +240,14 @@ int main(int argc, char *argv[])
     print_nn(nn); // only works on CPU
     STOP_AND_PRINT_CPUEVENT(ANN creation)
 
-    double *acc;
-    d_accuracy<<<2048*2048, 1024>>>(d_test_img, d_test_label, ntest, minibatch_size, d_nn, acc); // update la valeur de acc
-    printf("starting accuracy %lf\n", acc);
+    double *d_acc;
+    unsigned d_ntest;
+    __device__ unsigned d_minibatch_size = 16;
+    cudaMalloc((void **) &d_acc, sizeof(double));
+    cudaMalloc((void **) &d_ntest, sizeof(unsigned));
+    cudaMemcpy(&d_ntest, &ntest, sizeof(d_ntest), cudaMemcpyHostToDevice);
+    d_accuracy<<<2048*2048, 1024>>>(d_test_img, d_test_label, d_ntest, d_minibatch_size, d_nn, d_acc); // update la valeur de acc
+    printf("starting accuracy %lf\n", d_acc);
     // printf("starting accuracy %lf\n", accuracy(test_img, test_label, ntest, minibatch_size, nn));
 
     unsigned *shuffled_idx = (unsigned *)malloc(datasize*sizeof(unsigned));
@@ -273,7 +278,7 @@ int main(int argc, char *argv[])
     free(shuffled_idx);
     destroy_matrix(out);
 
-    free(acc);
+    cudaFree(d_acc);
 
     cudaMemcpy(nn, d_nn, sizeof(nn), cudaMemcpyDeviceToHost);
     cudaFree(d_nn);
