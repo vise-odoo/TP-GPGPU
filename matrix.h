@@ -14,6 +14,8 @@ typedef struct
 
 matrix_t * alloc_matrix(unsigned rows, unsigned columns);
 
+__device__ matrix_t * d_alloc_matrix(unsigned rows, unsigned columns);
+
 void destroy_matrix(matrix_t *m);
 
 void print_matrix(matrix_t *m, bool is_short);
@@ -42,5 +44,8 @@ __device__ void matrix_scalar_Kernel(matrix_t *m1, double s, matrix_t *res);
 
 __device__ void matrix_function_Kernel(matrix_t *m1, double (*f)(double), matrix_t *res);
 
+__device__ void matrix_dot_Kernel(matrix_t *m1, matrix_t *m2, matrix_t *res);
+
+__device__ void destroy_d_matrix(matrix_t *m);
 
 #endif

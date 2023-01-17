@@ -152,21 +152,21 @@ __device__ void d_forward(ann_t *d_nn, double (*d_activation_function)(double))
 {
     for (int l = 1; l < d_nn->number_of_layers; l++)
     {
-        matrix_t *z1 = alloc_matrix(d_nn->layers[l]->number_of_neurons, d_nn->minibatch_size);
-        matrix_t *z2 = alloc_matrix(d_nn->layers[l]->number_of_neurons, d_nn->minibatch_size);
-        matrix_t *one = alloc_matrix(1, d_nn->minibatch_size);
+        matrix_t *z1 = d_alloc_matrix(d_nn->layers[l]->number_of_neurons, d_nn->minibatch_size);
+        matrix_t *z2 = d_alloc_matrix(d_nn->layers[l]->number_of_neurons, d_nn->minibatch_size);
+        matrix_t *one = d_alloc_matrix(1, d_nn->minibatch_size);
         for (int idx = 0; idx < one->columns*one->rows; idx++)
             one->m[idx] = 1.0;
 
-        matrix_dot(d_nn->layers[l]->weights, d_nn->layers[l-1]->activations, z1); // z1 <- w^l x a^(l-1)
-        matrix_dot(d_nn->layers[l]->biases, one, z2); // z2 <- b^l x 1        
-        matrix_sum(z1, z2, d_nn->layers[l]->z); // z^l <- z1 + z2 <=> z^l <- w^l x a^(l-1) + b^l x 1      
+        matrix_dot_Kernel(d_nn->layers[l]->weights, d_nn->layers[l-1]->activations, z1); // z1 <- w^l x a^(l-1)
+        matrix_dot_Kernel(d_nn->layers[l]->biases, one, z2); // z2 <- b^l x 1        
+        matrix_sum_Kernel(z1, z2, d_nn->layers[l]->z); // z^l <- z1 + z2 <=> z^l <- w^l x a^(l-1) + b^l x 1      
 
         matrix_function_Kernel(d_nn->layers[l]->z, d_activation_function, d_nn->layers[l]->activations); // a^l = f(z^l)
      
-        destroy_matrix(z1);
-        destroy_matrix(z2);
-        destroy_matrix(one);
+        destroy_d_matrix(z1);
+        destroy_d_matrix(z2);
+        destroy_d_matrix(one);
     }
 }
 

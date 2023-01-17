@@ -15,11 +15,30 @@ matrix_t * alloc_matrix(unsigned rows, unsigned columns)
     return res;
 }
 
+__device__ matrix_t * d_alloc_matrix(unsigned rows, unsigned columns)
+{
+    matrix_t * res;
+    double * m_tmp = 0;
+    cudaMalloc((void **) &res, sizeof(matrix_t));
+    cudaMalloc((void **) &m_tmp, sizeof(double));
+
+    res->m = m_tmp;
+    res->columns = columns;
+    res->rows = rows;
+    return res;
+}
+
 void destroy_matrix(matrix_t *m)
 {
     //printf("free %p %p\n", m, m->m);
     free(m->m);
     free(m);
+}
+
+__device__ void destroy_d_matrix(matrix_t *m)
+{
+    cudaFree(m->m);
+    cudaFree(m);
 }
 
 void print_matrix(matrix_t *m, bool is_short){
@@ -120,6 +139,28 @@ __device__ void matrix_minus_Kernel(matrix_t *m1, matrix_t *m2, matrix_t *res)
 
 void matrix_dot(matrix_t *m1, matrix_t *m2, matrix_t *res)
 {
+    assert ( (m1->columns == m2->rows)  &&
+             (m1->rows == res->rows)    &&
+             (m2->columns == res->columns));
+
+    for (int row = 0; row < m1->rows; row ++)
+    {
+        for (int col = 0; col < m2->columns; col ++)
+        {
+            int idx = col + row * m2->columns;
+            double var = 0.0;
+
+            for (int ii = 0; ii < m1->columns; ii++)
+            {
+                var += m1->m[ii + row * m1->columns] * m2->m[col + ii * m2->columns];
+            }
+
+            res->m[idx] = var;
+        }
+    }
+}
+
+__device__ void matrix_dot_Kernel(matrix_t *m1, matrix_t *m2, matrix_t *res) {
     assert ( (m1->columns == m2->rows)  &&
              (m1->rows == res->rows)    &&
              (m2->columns == res->columns));
