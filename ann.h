@@ -1,5 +1,7 @@
 #ifndef ANN_H
 #define ANN_H
+
+#include "cudaMatrix.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
@@ -40,6 +42,6 @@ void print_nn(ann_t *nn);
 
 void forward(ann_t *nn, double (*activation_function)(double));
 
-void backward(ann_t *nn, matrix_t *y, double (*derivative_actfunct)(double));
+void backward(ann_t *nn, cudaMatrix* cy, double (*derivative_actfunct)(double));
 
 #endif

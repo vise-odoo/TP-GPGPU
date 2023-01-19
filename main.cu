@@ -7,6 +7,7 @@
 #include "mnist.h"
 #include "matrix.h"
 #include "ann.h"
+#include "cudaMatrix.h"
 #include <math.h>
 #include <string.h>
 #include <time.h>
@@ -150,7 +151,9 @@ int main(int argc, char *argv[])
     unsigned *shuffled_idx = (unsigned *)malloc(datasize*sizeof(unsigned));
     double *x = (double *) malloc(28*28 * minibatch_size * sizeof( double ));
     double *y = (double *) malloc(10 * minibatch_size * sizeof( double ));
-    matrix_t *out = alloc_matrix(10, minibatch_size);
+
+    cudaMatrix *out = &cudaMatrix(10, minibatch_size);
+    out->allocateMemory();
     
     for (int epoch = 0; epoch < 40; epoch ++)
     {
@@ -163,7 +166,7 @@ int main(int argc, char *argv[])
             populate_minibatch(x, y, shuffled_idx+i, minibatch_size, train_img, 28*28, train_label, 10);
             memcpy(nn->layers[0]->activations->m, x, 28 * 28 * minibatch_size * sizeof(double));
             forward(nn, sigmoid);
-            memcpy(out->m, y, 10 * minibatch_size * sizeof(double));            
+            memcpy(out->data_host.get(), y, 10 * minibatch_size * sizeof(double));            
             backward(nn, out, dsigmoid);            
         }     
         printf("epoch %d accuracy %lf\n", epoch, accuracy(test_img, test_label, ntest, minibatch_size, nn));
@@ -173,8 +176,8 @@ int main(int argc, char *argv[])
     free(x);
     free(y);
     free(shuffled_idx);
-    destroy_matrix(out);   
-    
+    out->destroyCudaMatrix();  
+
     return 0;
 }
 

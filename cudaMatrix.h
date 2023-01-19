@@ -1,13 +1,7 @@
+#ifndef CUDAMATRIX_H
+#define CUDAMATRIX_H
 
 #include <memory>
-
-struct Shape{
-	size_t x, y;
-
-	Shape(size_t x = 1, size_t y = 1);
-};
-
-
 class cudaMatrix {
 private:
 	bool device_allocated;
@@ -17,20 +11,25 @@ private:
 	void allocateHostMemory();
 
 public:
-	Shape shape;
+	unsigned rows;
+    unsigned columns;
 
-	std::shared_ptr<float> data_device;
-	std::shared_ptr<float> data_host;
+	std::shared_ptr<double> data_device;
+	std::shared_ptr<double> data_host;
 
-	cudaMatrix(size_t x_dim = 1, size_t y_dim = 1);
-	cudaMatrix(Shape shape);
+	cudaMatrix(unsigned rows, unsigned columns);
 
 	void allocateMemory();
-	void allocateMemoryIfNotAllocated(Shape shape);
+	void allocateMemoryIfNotAllocated(unsigned rows, unsigned columns);
 
 	void copyHostToDevice();
 	void copyDeviceToHost();
+	
+	void destroyCudaMatrix();
 
-	float& operator[](const int index);
-	const float& operator[](const int index) const;
+	double& operator[](const int index);
+	const double& operator[](const int index) const;
 };
+
+
+#endif

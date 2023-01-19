@@ -1,5 +1,6 @@
 #define _USE_MATH_DEFINES
 #include "ann.h"
+#include "cudaMatrix.h"
 #include "matrix.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -143,9 +144,11 @@ void forward(ann_t *nn, double (*activation_function)(double))
     }
 }
 
-void backward(ann_t *nn, matrix_t *y, double (*derivative_actfunct)(double))
+void backward(ann_t *nn, cudaMatrix *cy, double (*derivative_actfunct)(double))
 {
     unsigned L = nn->number_of_layers-1;
+    matrix_t *y = alloc_matrix(cy->rows, cy-> columns);
+    y->m = cy->data_host.get();
 
     matrix_t *dfzL = alloc_matrix(nn->layers[L]->number_of_neurons, nn->minibatch_size);
 
