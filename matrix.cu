@@ -6,8 +6,8 @@
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
-/* TODO : matrix dot , matrix hadamard
-Pistes d'amélioration : l'accès au matrice est-il vraiment fait par le GPU ? (Comme m->data_device est utilisé)
+/* TODO : matrix dot
+Pistes d'amélioration : l'accès aux matrices est-il vraiment fait par le GPU ? (Comme m->data_device est utilisé)
 Dans ann, initmatrix est utilisé à chaque passage. Il y a peut-être d'autres moyens...
 */
 
@@ -64,6 +64,21 @@ void hadamard_product(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
     for (int idx = 0; idx < m1->rows * m1->columns; idx ++)
     {
             (*res)[idx] = (*m1)[idx] * (*m2)[idx];
+    }
+}
+
+__global__ void hadamard_product_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
+{
+    assert ( (m1->columns == m2->columns)   &&
+             (m1->columns == res->columns)  &&
+             (m1->rows == m2->rows)         &&
+             (m1->rows == res->rows));
+
+    unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
+
+    if (idx < m1->rows * m1->columns)
+    { 
+            res->data_device[idx] = m1->data_device[idx] * m2->data_device[idx];
     }
 }
 

@@ -36,6 +36,8 @@ void matrix_scalar(cudaMatrix *m1, double s, cudaMatrix *res);
 
 void matrix_memcpy(cudaMatrix *dest, const cudaMatrix *src);
 
+__global__ void hadamard_product_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res);
+
 __global__ void matrix_sum_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res);
 
 __global__ void matrix_minus_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res);
