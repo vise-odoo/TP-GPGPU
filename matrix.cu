@@ -6,7 +6,11 @@
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
-// TODO : matrix dot , matrix hadamard, matrix transpose
+/* TODO : matrix dot , matrix hadamard
+Pistes d'amélioration : l'accès au matrice est-il vraiment fait par le GPU ? (Comme m->data_device est utilisé)
+Dans ann, initmatrix est utilisé à chaque passage. Il y a peut-être d'autres moyens...
+*/
+
 matrix_t * alloc_matrix(unsigned rows, unsigned columns)
 {
     matrix_t * res = (matrix_t*) malloc( sizeof(matrix_t) );
@@ -176,6 +180,20 @@ void matrix_transpose(cudaMatrix *m1, cudaMatrix *res)
         for (int col = 0; col < m1->columns; col ++)
         {
             (*res)[row + col * m1->rows] = (*m1)[col + row * m1->columns];
+        }
+    }
+}
+
+__global__ void matrix_transpose_Kernel(cudaMatrix *m1, cudaMatrix *res)
+{
+    assert ( (m1->columns == res->rows) &&             
+             (m1->rows == res->columns));
+    
+    if (blockIdx.x < m1->rows)
+    {
+        if (threadIdx.x < m1->columns)
+        {
+            res->data_device[blockIdx.x + threadIdx.x * m1->rows] = res->data_device[threadIdx.x + blockIdx.x * m1->columns];
         }
     }
 }

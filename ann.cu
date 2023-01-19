@@ -144,7 +144,7 @@ void forward(ann_t *nn, double (*activation_function)(double))
         nn->layers[l]->z->copyHostToDevice();
         matrix_sum_Kernel<<<32,32>>>(z1, z2, nn->layers[l]->z); // z^l <- z1 + z2 <=> z^l <- w^l x a^(l-1) + b^l x 1    
          nn->layers[l]->z->copyDeviceToHost(); 
-         
+
         matrix_function_Kernel<<<32,32>>>(nn->layers[l]->z, activation_function, nn->layers[l]->activations); // a^l = f(z^l)
         nn->layers[l]->activations->copyDeviceToHost(); 
 
@@ -173,7 +173,10 @@ void backward(ann_t *nn, cudaMatrix *y, double (*derivative_actfunct)(double))
         delta_tmp = initCudaMatrix(nn->layers[l-1]->number_of_neurons, nn->minibatch_size);
         dfz = initCudaMatrix(nn->layers[l-1]->number_of_neurons, nn->minibatch_size);
 
-        matrix_transpose(nn->layers[l]->weights, tw); // (w^l)T        
+        nn->layers[l]->weights->copyHostToDevice();
+        matrix_transpose_Kernel<<<tw->columns, tw->rows>>>(nn->layers[l]->weights, tw); // (w^l)T      
+        tw->copyDeviceToHost();  
+        
         matrix_dot(tw, nn->layers[l]->delta, delta_tmp); // (w^l)T x delta^l
 
         nn->layers[l-1]->z->copyHostToDevice();
@@ -193,7 +196,10 @@ void backward(ann_t *nn, cudaMatrix *y, double (*derivative_actfunct)(double))
         w1 = initCudaMatrix(nn->layers[l]->number_of_neurons, nn->layers[l-1]->number_of_neurons);
         ta = initCudaMatrix(nn->minibatch_size, nn->layers[l-1]->number_of_neurons);
         
-        matrix_transpose(nn->layers[l-1]->activations, ta); // ta <- (a^(l-1))^T
+        nn->layers[l-1]->activations->copyHostToDevice();
+        matrix_transpose_Kernel<<<ta->columns, ta->rows>>>(nn->layers[l-1]->activations, ta); // ta <- (a^(l-1))^T
+        ta -> copyDeviceToHost();
+
         matrix_dot(nn->layers[l]->delta, ta, w1); // w1 <- delta^l x (a^(l-1))^T
 
         w1->copyHostToDevice();
