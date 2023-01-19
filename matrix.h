@@ -40,8 +40,6 @@ __global__ void matrix_sum_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *re
 
 __global__ void matrix_minus_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res);
 
-__global__ void matrix_transpose_Kernel(cudaMatrix *m1, cudaMatrix *res);
-
 __global__ void matrix_scalar_Kernel(cudaMatrix *m1, double s, cudaMatrix *res);
 
 __global__ void matrix_function_Kernel(cudaMatrix *m1, double (*f)(double), cudaMatrix *res);
