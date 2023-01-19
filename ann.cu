@@ -77,14 +77,9 @@ layer_t * create_layer(unsigned layer_number, unsigned number_of_neurons, unsign
     layer->minibatch_size = minibatch_size;    
     layer->activations = initCudaMatrix(number_of_neurons, minibatch_size);
     layer->z = initCudaMatrix(number_of_neurons, minibatch_size);
-    layer->z->allocateMemory();
     layer->delta = initCudaMatrix(number_of_neurons, minibatch_size);
-    layer->delta->allocateMemory();
     layer->weights = initCudaMatrix(number_of_neurons, nneurons_previous_layer);    
-    layer->weights->allocateMemory();
     layer->biases = initCudaMatrix(number_of_neurons, 1);
-    layer->biases->allocateMemory();
-
     if (layer_number > 0)
     {
         init_weight(layer->weights, nneurons_previous_layer);
