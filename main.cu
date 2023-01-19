@@ -79,7 +79,6 @@ double accuracy(image* test_img, byte* test_label, unsigned datasize, unsigned m
         memcpy(nn->layers[0]->activations->data_host, x, 28*28 * minibatch_size * sizeof(double));     
         
         forward(nn, sigmoid);
-        nn->layers[nn->number_of_layers-1]->activations->copyDeviceToHost();
         for (int col = 0; col < minibatch_size; col ++)
         {
             int idxTrainingData = col + i ;
@@ -154,7 +153,7 @@ int main(int argc, char *argv[])
     double *y = (double *) malloc(10 * minibatch_size * sizeof( double ));
 
     cudaMatrix* out = initCudaMatrix(10, minibatch_size);
-
+    
     for (int epoch = 0; epoch < 40; epoch ++)
     {
         START_CPUEVENT

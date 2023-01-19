@@ -138,7 +138,7 @@ void forward(ann_t *nn, double (*activation_function)(double))
         z2->copyHostToDevice();
         nn->layers[l]->z->copyHostToDevice();
         matrix_sum_Kernel<<<32,32>>>(z1, z2, nn->layers[l]->z); // z^l <- z1 + z2 <=> z^l <- w^l x a^(l-1) + b^l x 1    
-        nn->layers[l]->z->copyDeviceToHost(); 
+         nn->layers[l]->z->copyDeviceToHost(); 
 
         matrix_function_Kernel<<<32,32>>>(nn->layers[l]->z, activation_function, nn->layers[l]->activations); // a^l = f(z^l)
         nn->layers[l]->activations->copyDeviceToHost(); 
@@ -206,7 +206,7 @@ void backward(ann_t *nn, cudaMatrix *y, double (*derivative_actfunct)(double))
 
         w1->copyHostToDevice();
         matrix_scalar_Kernel<<<32,32>>>(w1, nn->alpha / nn->minibatch_size, w1); // w1 <- alpha /m . delta^l x (a^(l-1))^T
-        // Pas de copy device to host de w1, puisque la fonction suivante utilise w1 dans le device
+         // Pas de copy device to host, puisque la fonction suivante utilise w1 dans le device
 
         nn->layers[l]->weights->copyHostToDevice();
         matrix_minus_Kernel<<<32,32>>>(nn->layers[l]->weights, w1, nn->layers[l]->weights); // w^l <- w^l - alpha /m . delta^l x (a^(l-1))^T
@@ -225,7 +225,7 @@ void backward(ann_t *nn, cudaMatrix *y, double (*derivative_actfunct)(double))
 
         b1->copyHostToDevice();
         matrix_scalar_Kernel<<<32,32>>>(b1,  nn->alpha / nn->minibatch_size, b1); // b1 <- alpha / m . delta^l x 1^T
-        // Pas de copy device to host de b1, puisque la fonction suivante utilise b1 dans le device
+        // Pas de copy device to host, puisque la fonction suivante utilise b1 dans le device
 
         nn->layers[l]->biases->copyHostToDevice();
         matrix_minus_Kernel<<<32,32>>>(nn->layers[l]->biases, b1, nn->layers[l]->biases); // b^l = b^l - alpha / m . delta^l x 1^T
