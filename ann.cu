@@ -138,10 +138,16 @@ void forward(ann_t *nn, double (*activation_function)(double))
 
         matrix_dot(nn->layers[l]->weights, nn->layers[l-1]->activations, z1); // z1 <- w^l x a^(l-1)
         matrix_dot(nn->layers[l]->biases, one, z2); // z2 <- b^l x 1        
-        matrix_sum(z1, z2, nn->layers[l]->z); // z^l <- z1 + z2 <=> z^l <- w^l x a^(l-1) + b^l x 1      
 
-        matrix_function(nn->layers[l]->z, activation_function, nn->layers[l]->activations); // a^l = f(z^l)
-     
+        z1->copyHostToDevice();
+        z2->copyHostToDevice();
+        nn->layers[l]->z->copyHostToDevice();
+        matrix_sum_Kernel<<<32,32>>>(z1, z2, nn->layers[l]->z); // z^l <- z1 + z2 <=> z^l <- w^l x a^(l-1) + b^l x 1    
+         nn->layers[l]->z->copyDeviceToHost(); 
+         
+        matrix_function_Kernel<<<32,32>>>(nn->layers[l]->z, activation_function, nn->layers[l]->activations); // a^l = f(z^l)
+        nn->layers[l]->activations->copyDeviceToHost(); 
+
         z1->destroyCudaMatrix();
         z2->destroyCudaMatrix();
         one->destroyCudaMatrix();
