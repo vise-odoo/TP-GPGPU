@@ -242,6 +242,7 @@ int main(int argc, char *argv[])
     cudaMemcpy(&d_ntest, &ntest, sizeof(d_ntest), cudaMemcpyHostToDevice);
     cudaMemcpy(&d_minibatch_size, &minibatch_size, sizeof(d_minibatch_size), cudaMemcpyHostToDevice);
     d_accuracy<<<8, 1024>>>(d_test_img, d_test_label, d_ntest, d_minibatch_size, d_nn, d_acc); // update la valeur de d_acc
+    cudaDeviceSynchronize();
     cudaMemcpy(&acc, &d_acc, sizeof(acc), cudaMemcpyDeviceToHost);
     printf("starting accuracy %lf\n", acc); // on copie la valeur de d_acc dans acc pour pouvoir l'afficher
 
