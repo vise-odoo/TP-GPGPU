@@ -155,15 +155,9 @@ void backward(ann_t *nn, cudaMatrix *y, double (*derivative_actfunct)(double))
 
     cudaMatrix *dfzL = initCudaMatrix(nn->layers[L]->number_of_neurons, nn->minibatch_size);
 
-    nn->layers[L]->activations->copyHostToDevice();
-    y ->copyHostToDevice();
-    matrix_minus_Kernel<<<32,32>>>(nn->layers[L]->activations, y, nn->layers[L]->delta);  // delta^(L) = (a^L - y)
-    // Pas de récupération de delta, car il est de nouveau utilisé dans hadamard product
-
-    nn->layers[L]->z->copyHostToDevice();
-    matrix_function_Kernel<<<32,32>>>(nn->layers[L]->z, derivative_actfunct, dfzL); // f'(z^(L))
-    hadamard_product_Kernel<<<32,32>>>(nn->layers[L]->delta, dfzL, nn->layers[L]->delta); // delta^(L) = (a^L - y) o f'(z^(L))
-    nn->layers[L]->delta->copyDeviceToHost();
+    matrix_minus(nn->layers[L]->activations, y, nn->layers[L]->delta);  // delta^(L) = (a^L - y)
+    matrix_function(nn->layers[L]->z, derivative_actfunct, dfzL); // f'(z^(L))
+    hadamard_product(nn->layers[L]->delta, dfzL, nn->layers[L]->delta); // delta^(L) = (a^L - y) o f'(z^(L))
 
     dfzL->destroyCudaMatrix();
 
@@ -182,10 +176,9 @@ void backward(ann_t *nn, cudaMatrix *y, double (*derivative_actfunct)(double))
 
         nn->layers[l-1]->z->copyHostToDevice();
         matrix_function_Kernel<<<32,32>>>(nn->layers[l-1]->z, derivative_actfunct, dfz); // f'(z^(l-1))
+        dfz->copyDeviceToHost();
 
-        delta_tmp->copyHostToDevice();
-        hadamard_product_Kernel<<<32,32>>>(delta_tmp, dfz, nn->layers[l-1]->delta); // delta^(l-1) = (w^l)T x delta^l o f'(z^(l-1))
-        nn->layers[l-1]->delta->copyDeviceToHost();
+        hadamard_product(delta_tmp, dfz, nn->layers[l-1]->delta); // delta^(l-1) = (w^l)T x delta^l o f'(z^(l-1))
 
         tw->destroyCudaMatrix();
         delta_tmp->destroyCudaMatrix();
