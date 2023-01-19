@@ -12,13 +12,13 @@ typedef struct
     unsigned minibatch_size;
     unsigned number_of_neurons;
     
-    matrix_t* weights;
-    matrix_t* biases;
+    cudaMatrix* weights;
+    cudaMatrix* biases;
 
-    matrix_t* z;
-    matrix_t* activations;
+    cudaMatrix* z;
+    cudaMatrix* activations;
     
-    matrix_t* delta;
+    cudaMatrix* delta;
 } layer_t;
 
 typedef struct 
@@ -36,7 +36,7 @@ ann_t * create_ann(double alpha, unsigned minibatch_size, unsigned number_of_lay
 
 layer_t * create_layer(unsigned l, unsigned number_of_neurons, unsigned nneurons_previous_layer, unsigned minibatch_size);
 
-void set_input(ann_t *nn, matrix_t* input);
+void set_input(ann_t *nn, cudaMatrix* input);
 
 void print_nn(ann_t *nn);
 

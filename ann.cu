@@ -11,7 +11,7 @@
 #include <stdint.h>
 
 double normalRand(double mu, double sigma);
-void init_weight(matrix_t* w, unsigned nneurones_prev);
+void init_weight(cudaMatrix* w, unsigned nneurones_prev);
 void print_layer(layer_t *layer);
 
 bool generate;
@@ -41,11 +41,11 @@ double normalRand(double mu, double sigma)
 	return z0 * sigma + mu;
 }
 
-void init_weight(matrix_t* w, unsigned nneurones_prev)
+void init_weight(cudaMatrix* w, unsigned nneurones_prev)
 {
     for (int idx = 0; idx < w->columns * w->rows; idx ++)
     {
-        w->m[idx] = normalRand(0, 1 / sqrt(nneurones_prev));
+        (*w)[idx] = normalRand(0, 1 / sqrt(nneurones_prev)); // Le programme s'exécute sur la partie host dans cette version non kernelisée
     }
 }
 
@@ -75,11 +75,15 @@ layer_t * create_layer(unsigned layer_number, unsigned number_of_neurons, unsign
 
     layer->number_of_neurons = number_of_neurons;
     layer->minibatch_size = minibatch_size;    
-    layer->activations = alloc_matrix(number_of_neurons, minibatch_size);
-    layer->z = alloc_matrix(number_of_neurons, minibatch_size);
-    layer->delta = alloc_matrix(number_of_neurons, minibatch_size);
-    layer->weights = alloc_matrix(number_of_neurons, nneurons_previous_layer);    
-    layer->biases = alloc_matrix(number_of_neurons, 1);
+    layer->activations = initCudaMatrix(number_of_neurons, minibatch_size);
+    layer->z = initCudaMatrix(number_of_neurons, minibatch_size);
+    layer->z->allocateMemory();
+    layer->delta = initCudaMatrix(number_of_neurons, minibatch_size);
+    layer->delta->allocateMemory();
+    layer->weights = initCudaMatrix(number_of_neurons, nneurons_previous_layer);    
+    layer->weights->allocateMemory();
+    layer->biases = initCudaMatrix(number_of_neurons, 1);
+    layer->biases->allocateMemory();
 
     if (layer_number > 0)
     {
@@ -89,7 +93,7 @@ layer_t * create_layer(unsigned layer_number, unsigned number_of_neurons, unsign
     return layer;
 }
 
-void set_input(ann_t *nn, matrix_t* input){
+void set_input(ann_t *nn, cudaMatrix* input){
     matrix_memcpy(nn->layers[0]->activations, input);
 }
 
@@ -126,11 +130,11 @@ void forward(ann_t *nn, double (*activation_function)(double))
 {
     for (int l = 1; l < nn->number_of_layers; l++)
     {
-        matrix_t *z1 = alloc_matrix(nn->layers[l]->number_of_neurons, nn->minibatch_size);
-        matrix_t *z2 = alloc_matrix(nn->layers[l]->number_of_neurons, nn->minibatch_size);
-        matrix_t *one = alloc_matrix(1, nn->minibatch_size);
+        cudaMatrix *z1 = initCudaMatrix(nn->layers[l]->number_of_neurons, nn->minibatch_size);
+        cudaMatrix *z2 = initCudaMatrix(nn->layers[l]->number_of_neurons, nn->minibatch_size);
+        cudaMatrix *one = initCudaMatrix(1, nn->minibatch_size);
         for (int idx = 0; idx < one->columns*one->rows; idx++)
-            one->m[idx] = 1.0;
+            (*one)[idx] = 1.0;
 
         matrix_dot(nn->layers[l]->weights, nn->layers[l-1]->activations, z1); // z1 <- w^l x a^(l-1)
         matrix_dot(nn->layers[l]->biases, one, z2); // z2 <- b^l x 1        
@@ -138,68 +142,66 @@ void forward(ann_t *nn, double (*activation_function)(double))
 
         matrix_function(nn->layers[l]->z, activation_function, nn->layers[l]->activations); // a^l = f(z^l)
      
-        destroy_matrix(z1);
-        destroy_matrix(z2);
-        destroy_matrix(one);
+        z1->destroyCudaMatrix();
+        z2->destroyCudaMatrix();
+        one->destroyCudaMatrix();
     }
 }
 
-void backward(ann_t *nn, cudaMatrix *cy, double (*derivative_actfunct)(double))
+void backward(ann_t *nn, cudaMatrix *y, double (*derivative_actfunct)(double))
 {
     unsigned L = nn->number_of_layers-1;
-    matrix_t *y = alloc_matrix(cy->rows, cy-> columns);
-    y->m = cy->data_host.get();
 
-    matrix_t *dfzL = alloc_matrix(nn->layers[L]->number_of_neurons, nn->minibatch_size);
+    cudaMatrix *dfzL = initCudaMatrix(nn->layers[L]->number_of_neurons, nn->minibatch_size);
 
     matrix_minus(nn->layers[L]->activations, y, nn->layers[L]->delta);  // delta^(L) = (a^L - y)
     matrix_function(nn->layers[L]->z, derivative_actfunct, dfzL); // f'(z^(L))
     hadamard_product(nn->layers[L]->delta, dfzL, nn->layers[L]->delta); // delta^(L) = (a^L - y) o f'(z^(L))
 
-    destroy_matrix(dfzL);
+    dfzL->destroyCudaMatrix();
 
     for (int l = L; l > 1; l--)
     {
-        matrix_t *tw, *delta_tmp, *dfz;
-        tw = alloc_matrix(nn->layers[l-1]->number_of_neurons, nn->layers[l]->number_of_neurons);
-        delta_tmp = alloc_matrix(nn->layers[l-1]->number_of_neurons, nn->minibatch_size);
-        dfz = alloc_matrix(nn->layers[l-1]->number_of_neurons, nn->minibatch_size);
+        cudaMatrix *tw, *delta_tmp, *dfz;
+        tw = initCudaMatrix(nn->layers[l-1]->number_of_neurons, nn->layers[l]->number_of_neurons);
+        delta_tmp = initCudaMatrix(nn->layers[l-1]->number_of_neurons, nn->minibatch_size);
+        dfz = initCudaMatrix(nn->layers[l-1]->number_of_neurons, nn->minibatch_size);
 
         matrix_transpose(nn->layers[l]->weights, tw); // (w^l)T        
         matrix_dot(tw, nn->layers[l]->delta, delta_tmp); // (w^l)T x delta^l
         matrix_function(nn->layers[l-1]->z, derivative_actfunct, dfz); // f'(z^(l-1))
         hadamard_product(delta_tmp, dfz, nn->layers[l-1]->delta); // delta^(l-1) = (w^l)T x delta^l o f'(z^(l-1))
 
-        destroy_matrix(tw);
-        destroy_matrix(delta_tmp);
-        destroy_matrix(dfz);
+        tw->destroyCudaMatrix();
+        delta_tmp->destroyCudaMatrix();
+        dfz->destroyCudaMatrix();
     }
 
     for (int l = 1; l < nn->number_of_layers; l++)
     {
-        matrix_t *w1, *ta;
-        w1 = alloc_matrix(nn->layers[l]->number_of_neurons, nn->layers[l-1]->number_of_neurons);
-        ta = alloc_matrix(nn->minibatch_size, nn->layers[l-1]->number_of_neurons);
+        cudaMatrix *w1, *ta;
+        w1 = initCudaMatrix(nn->layers[l]->number_of_neurons, nn->layers[l-1]->number_of_neurons);
+        ta = initCudaMatrix(nn->minibatch_size, nn->layers[l-1]->number_of_neurons);
         
         matrix_transpose(nn->layers[l-1]->activations, ta); // ta <- (a^(l-1))^T
         matrix_dot(nn->layers[l]->delta, ta, w1); // w1 <- delta^l x (a^(l-1))^T
         matrix_scalar(w1, nn->alpha / nn->minibatch_size, w1); // w1 <- alpha /m . delta^l x (a^(l-1))^T
         matrix_minus(nn->layers[l]->weights, w1, nn->layers[l]->weights); // w^l <- w^l - alpha /m . delta^l x (a^(l-1))^T
 
-        destroy_matrix(w1);
-        destroy_matrix(ta);
+        w1->destroyCudaMatrix();
+        ta->destroyCudaMatrix();
 
-        matrix_t *one, *b1;
-        b1 = alloc_matrix(nn->layers[l]->number_of_neurons, 1);
-        one = alloc_matrix(nn->minibatch_size, 1);
+        cudaMatrix *one, *b1;
+        b1 = initCudaMatrix(nn->layers[l]->number_of_neurons, 1);
+        one = initCudaMatrix(nn->minibatch_size, 1);
         for (int idx = 0; idx < one->columns*one->rows; idx++)
-            one->m[idx] = 1.0;
+            (*one)[idx] = 1.0;
 
         matrix_dot(nn->layers[l]->delta, one, b1); // b1 <- delta^l x 1^T
         matrix_scalar(b1,  nn->alpha / nn->minibatch_size, b1); // b1 <- alpha / m . delta^l x 1^T
         matrix_minus(nn->layers[l]->biases, b1, nn->layers[l]->biases); // b^l = b^l - alpha / m . delta^l x 1^T
         
-        destroy_matrix(one);
-        destroy_matrix(b1);
+        one->destroyCudaMatrix();
+        b1->destroyCudaMatrix();
     }
 }

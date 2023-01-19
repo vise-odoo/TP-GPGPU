@@ -76,7 +76,7 @@ double accuracy(image* test_img, byte* test_label, unsigned datasize, unsigned m
     for (int i = 0; i < datasize - minibatch_size; i+= minibatch_size)
     {        
         populate_minibatch(x, y, &idx[i], minibatch_size, test_img, 28*28, test_label, 10);
-        memcpy(nn->layers[0]->activations->m, x, 28*28 * minibatch_size * sizeof(double));     
+        memcpy(nn->layers[0]->activations->data_host, x, 28*28 * minibatch_size * sizeof(double));     
         
         forward(nn, sigmoid);
         for (int col = 0; col < minibatch_size; col ++)
@@ -86,8 +86,8 @@ double accuracy(image* test_img, byte* test_label, unsigned datasize, unsigned m
             unsigned idx_max = 0;
             for (int row = 0; row < 10; row++){
                 int idx = col + row * minibatch_size;
-                if (nn->layers[nn->number_of_layers-1]->activations->m[idx] > max){
-                    max = nn->layers[nn->number_of_layers-1]->activations->m[idx];
+                if (nn->layers[nn->number_of_layers-1]->activations->data_host[idx] > max){
+                    max = nn->layers[nn->number_of_layers-1]->activations->data_host[idx];
                     idx_max = row;
                 }
             }
@@ -152,8 +152,7 @@ int main(int argc, char *argv[])
     double *x = (double *) malloc(28*28 * minibatch_size * sizeof( double ));
     double *y = (double *) malloc(10 * minibatch_size * sizeof( double ));
 
-    cudaMatrix *out = &cudaMatrix(10, minibatch_size);
-    out->allocateMemory();
+    cudaMatrix* out = initCudaMatrix(10, minibatch_size);
     
     for (int epoch = 0; epoch < 40; epoch ++)
     {
@@ -164,9 +163,9 @@ int main(int argc, char *argv[])
         for (int i = 0; i < datasize - minibatch_size ; i+= minibatch_size)
         {
             populate_minibatch(x, y, shuffled_idx+i, minibatch_size, train_img, 28*28, train_label, 10);
-            memcpy(nn->layers[0]->activations->m, x, 28 * 28 * minibatch_size * sizeof(double));
+            memcpy(nn->layers[0]->activations->data_host, x, 28 * 28 * minibatch_size * sizeof(double));
             forward(nn, sigmoid);
-            memcpy(out->data_host.get(), y, 10 * minibatch_size * sizeof(double));            
+            memcpy(out->data_host, y, 10 * minibatch_size * sizeof(double));            
             backward(nn, out, dsigmoid);            
         }     
         printf("epoch %d accuracy %lf\n", epoch, accuracy(test_img, test_label, ntest, minibatch_size, nn));

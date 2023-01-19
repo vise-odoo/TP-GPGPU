@@ -14,8 +14,8 @@ public:
 	unsigned rows;
     unsigned columns;
 
-	std::shared_ptr<double> data_device;
-	std::shared_ptr<double> data_host;
+	double* data_device;
+	double* data_host;
 
 	cudaMatrix(unsigned rows, unsigned columns);
 
@@ -31,5 +31,6 @@ public:
 	const double& operator[](const int index) const;
 };
 
+cudaMatrix* initCudaMatrix(unsigned rows, unsigned columns);
 
 #endif

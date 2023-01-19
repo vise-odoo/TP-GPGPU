@@ -1,4 +1,5 @@
 #include "matrix.h"
+#include "cudaMatrix.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -22,7 +23,7 @@ void destroy_matrix(matrix_t *m)
     free(m);
 }
 
-void print_matrix(matrix_t *m, bool is_short){
+void print_matrix(cudaMatrix *m, bool is_short){
     unsigned lim_rows = 0;
     unsigned lim_col = 0;
 
@@ -41,7 +42,7 @@ void print_matrix(matrix_t *m, bool is_short){
     {
         for (int col = 0; col < lim_col; col ++)
         {
-            printf("%.2lf ", m->m[col + row * m->columns]);
+            printf("%.2lf ", (*m)[col + row * m->columns]);
         }
         if (is_short && lim_col != m->columns) printf("...");
         printf("\n");
@@ -49,7 +50,7 @@ void print_matrix(matrix_t *m, bool is_short){
     if (is_short && lim_rows != m->rows) printf("...\n");
 }
 
-void hadamard_product(matrix_t *m1, matrix_t *m2, matrix_t *res)
+void hadamard_product(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
 {
     assert ( (m1->columns == m2->columns)   &&
              (m1->columns == res->columns)  &&
@@ -58,11 +59,11 @@ void hadamard_product(matrix_t *m1, matrix_t *m2, matrix_t *res)
 
     for (int idx = 0; idx < m1->rows * m1->columns; idx ++)
     {
-            res->m[idx] = m1->m[idx] * m2->m[idx];
+            (*res)[idx] = (*m1)[idx] * (*m2)[idx];
     }
 }
 
-void matrix_sum(matrix_t *m1, matrix_t *m2, matrix_t *res)
+void matrix_sum(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
 {
     assert ( (m1->columns == m2->columns)  &&
              (m1->columns == res->columns) &&
@@ -71,26 +72,26 @@ void matrix_sum(matrix_t *m1, matrix_t *m2, matrix_t *res)
 
     for (int idx = 0; idx < m1->rows * m1->columns; idx ++)
     { 
-        res->m[idx] = m1->m[idx] + m2->m[idx];
+        (*res)[idx] = (*m1)[idx] + (*m2)[idx];
     }
 }
 
-__device__ void matrix_sum_Kernel(matrix_t *m1, matrix_t *m2, matrix_t *res)
-{
-    assert ( (m1->columns == m2->columns)  &&
-             (m1->columns == res->columns) &&
-             (m1->rows == m2->rows)        &&
-             (m1->rows == res->rows));
+// __device__ void matrix_sum_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
+// {
+//     assert ( (m1->columns == m2->columns)  &&
+//              (m1->columns == res->columns) &&
+//              (m1->rows == m2->rows)        &&
+//              (m1->rows == res->rows));
 
-    unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
+//     unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
 
-    if (idx < m1->rows * m1->columns)
-    { 
-        res->m[idx] = m1->m[idx] + m2->m[idx];
-    }
-}
+//     if (idx < m1->rows * m1->columns)
+//     { 
+//         res->data_device.get()[idx] = m1->data_device.get()[idx] + m2->data_device.get()[idx];
+//     }
+// }
 
-void matrix_minus(matrix_t *m1, matrix_t *m2, matrix_t *res)
+void matrix_minus(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
 {
     assert ( (m1->columns == m2->columns)  &&
              (m1->columns == res->columns) &&
@@ -99,26 +100,26 @@ void matrix_minus(matrix_t *m1, matrix_t *m2, matrix_t *res)
              
     for (int idx = 0; idx < m1->rows * m1->columns; idx ++)
     {
-        res->m[idx] = m1->m[idx] - m2->m[idx];
+        (*res)[idx] = (*m1)[idx] - (*m2)[idx];
     }
 }
 
-__device__ void matrix_minus_Kernel(matrix_t *m1, matrix_t *m2, matrix_t *res)
-{
-    assert ( (m1->columns == m2->columns)  &&
-             (m1->columns == res->columns) &&
-             (m1->rows == m2->rows)        &&
-             (m1->rows == res->rows));
+// __global__ void matrix_minus_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
+// {
+//     assert ( (m1->columns == m2->columns)  &&
+//              (m1->columns == res->columns) &&
+//              (m1->rows == m2->rows)        &&
+//              (m1->rows == res->rows));
 
-    unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
+//     unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
 
-    if (idx < m1->rows * m1->columns)
-    { 
-        res->m[idx] = m1->m[idx] - m2->m[idx];
-    }
-}
+//     if (idx < m1->rows * m1->columns)
+//     { 
+//         res->data_device.get()[idx] = m1->data_device.get()[idx] - m2->data_device.get()[idx];
+//     }
+// }
 
-void matrix_dot(matrix_t *m1, matrix_t *m2, matrix_t *res)
+void matrix_dot(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
 {
     assert ( (m1->columns == m2->rows)  &&
              (m1->rows == res->rows)    &&
@@ -133,39 +134,39 @@ void matrix_dot(matrix_t *m1, matrix_t *m2, matrix_t *res)
 
             for (int ii = 0; ii < m1->columns; ii++)
             {
-                var += m1->m[ii + row * m1->columns] * m2->m[col + ii * m2->columns];
+                var += (*m1)[ii + row * m1->columns] * (*m2)[col + ii * m2->columns];
             }
 
-            res->m[idx] = var;
+            (*res)[idx] = var;
         }
     }
 }
 
-void matrix_function(matrix_t *m1, double (*f)(double), matrix_t *res)
+void matrix_function(cudaMatrix *m1, double (*f)(double), cudaMatrix *res)
 {
     assert ( (m1->columns == res->columns) &&             
              (m1->rows == res->rows));
 
     for (int idx = 0; idx < m1->rows * m1->columns; idx ++)
     {
-        res->m[idx] = f(m1->m[idx]);
+        (*res)[idx] = f((*m1)[idx]);
     }
 }
 
-__device__ void matrix_function_Kernel(matrix_t *m1, double (*f)(double), matrix_t *res)
-{
-    assert ( (m1->columns == res->columns) &&             
-            (m1->rows == res->rows));
+// __global__ void matrix_function_Kernel(cudaMatrix *m1, double (*f)(double), cudaMatrix *res)
+// {
+//     assert ( (m1->columns == res->columns) &&             
+//             (m1->rows == res->rows));
 
-    unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
+//     unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
 
-    if (idx < m1->rows * m1->columns)
-    { 
-        res->m[idx] = f(m1->m[idx]);
-    }
-}
+//     if (idx < m1->rows * m1->columns)
+//     { 
+//         res->data_device.get()[idx] = f(m1->data_device.get()[idx]);
+//     }
+// }
 
-void matrix_transpose(matrix_t *m1, matrix_t *res)
+void matrix_transpose(cudaMatrix *m1, cudaMatrix *res)
 {
     assert ( (m1->columns == res->rows) &&             
              (m1->rows == res->columns));
@@ -174,39 +175,39 @@ void matrix_transpose(matrix_t *m1, matrix_t *res)
     {
         for (int col = 0; col < m1->columns; col ++)
         {
-            res->m[row + col * m1->rows] = m1->m[col + row * m1->columns];
+            (*res)[row + col * m1->rows] = (*m1)[col + row * m1->columns];
         }
     }
 }
 
-void matrix_scalar(matrix_t *m1, double s, matrix_t *res)
+void matrix_scalar(cudaMatrix *m1, double s, cudaMatrix *res)
 {
     assert ( (m1->rows == res->rows) &&             
              (m1->columns == res->columns));
 
     for (int idx = 0; idx < m1->columns*m1->rows; idx ++)
     {
-        res->m[idx] = m1->m[idx] * s;
+        (*res)[idx] = (*m1)[idx] * s;
     }
 }
 
-__device__ void matrix_scalar_Kernel(matrix_t *m1, double s, matrix_t *res)
-{
-    assert ( (m1->rows == res->rows) &&             
-             (m1->columns == res->columns));
+// __global__ void matrix_scalar_Kernel(cudaMatrix *m1, double s, cudaMatrix *res)
+// {
+//     assert ( (m1->rows == res->rows) &&             
+//              (m1->columns == res->columns));
 
-    unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
+//     unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
 
-    if (idx < m1->rows * m1->columns)
-    { 
-        res->m[idx] = m1->m[idx] * s;
-    }
-}
+//     if (idx < m1->rows * m1->columns)
+//     { 
+//         res->data_device.get()[idx] = m1->data_device.get()[idx] * s;
+//     }
+// }
 
-void matrix_memcpy(matrix_t *dest, const matrix_t *src)
+void matrix_memcpy(cudaMatrix *dest, const cudaMatrix *src)
 {
     assert ( (dest->rows == src->rows)      &&             
              (dest->columns == src->columns));
 
-    memcpy(dest->m, src->m, src->columns * src->rows * sizeof(double));     
+    memcpy(dest->data_host, src->data_host, src->columns * src->rows * sizeof(double));     
 }

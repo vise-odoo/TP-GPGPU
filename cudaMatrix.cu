@@ -1,5 +1,12 @@
 #include "cudaMatrix.h"
 
+cudaMatrix* initCudaMatrix(unsigned rows, unsigned columns) {
+	cudaMatrix* m = (cudaMatrix*) malloc( sizeof(cudaMatrix) );
+	*m = cudaMatrix(rows, columns);
+	m->allocateMemory();
+	return m;
+}
+
 cudaMatrix::cudaMatrix(unsigned rows, unsigned columns) :
 	rows(rows), columns(columns), data_device(nullptr), data_host(nullptr),
 	device_allocated(false), host_allocated(false)
@@ -8,18 +15,14 @@ cudaMatrix::cudaMatrix(unsigned rows, unsigned columns) :
 
 void cudaMatrix::allocateCudaMemory() {
 	if (!device_allocated) {
-		double* device_memory = nullptr;
-		cudaMalloc(&device_memory, rows * columns * sizeof(double));
-		data_device = std::shared_ptr<double>(device_memory,
-											 [&](double* ptr){ cudaFree(ptr); });
+		cudaMalloc(&data_device, rows * columns * sizeof(double));
 		device_allocated = true;
 	}
 }
 
 void cudaMatrix::allocateHostMemory() {
 	if (!host_allocated) {
-		data_host = std::shared_ptr<double>(new double[rows * columns],
-										   [&](double* ptr){ delete[] ptr; });
+		data_host = (double *) calloc(columns * rows, sizeof(double));
 		host_allocated = true;
 	}
 }
@@ -39,25 +42,25 @@ void cudaMatrix::allocateMemoryIfNotAllocated(unsigned rows, unsigned columns) {
 
 void cudaMatrix::copyHostToDevice() {
 	if (device_allocated && host_allocated) {
-		cudaMemcpy(data_device.get(), data_host.get(), rows * columns * sizeof(double), cudaMemcpyHostToDevice);
+		cudaMemcpy(data_device, data_host, rows * columns * sizeof(double), cudaMemcpyHostToDevice);
 	}
 }
 
 void cudaMatrix::copyDeviceToHost() {
 	if (device_allocated && host_allocated) {
-		cudaMemcpy(data_host.get(), data_device.get(), rows * columns * sizeof(double), cudaMemcpyDeviceToHost);
+		cudaMemcpy(data_host, data_device, rows * columns * sizeof(double), cudaMemcpyDeviceToHost);
 	}
 }
 
 double& cudaMatrix::operator[](const int index) {
-	return data_host.get()[index];
+	return data_host[index];
 }
 
 const double& cudaMatrix::operator[](const int index) const {
-	return data_host.get()[index];
+	return data_host[index];
 }
 
 void cudaMatrix::destroyCudaMatrix(){
-	cudaFree(data_device.get());
-	free(data_host.get());
+	cudaFree(data_device);
+	free(data_host);
 }
