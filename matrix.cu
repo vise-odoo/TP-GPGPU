@@ -76,20 +76,20 @@ void matrix_sum(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
     }
 }
 
-// __device__ void matrix_sum_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
-// {
-//     assert ( (m1->columns == m2->columns)  &&
-//              (m1->columns == res->columns) &&
-//              (m1->rows == m2->rows)        &&
-//              (m1->rows == res->rows));
+__global__ void matrix_sum_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res, int rows, int col)
+{
+    assert ( (m1->columns == m2->columns)  &&
+             (m1->columns == res->columns) &&
+             (m1->rows == m2->rows)        &&
+             (m1->rows == res->rows));
 
-//     unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
+    unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
 
-//     if (idx < m1->rows * m1->columns)
-//     { 
-//         res->data_device.get()[idx] = m1->data_device.get()[idx] + m2->data_device.get()[idx];
-//     }
-// }
+    if (idx < m1->rows * m1->columns)
+    { 
+        res->data_device[idx] = m1->data_device[idx] + m2->data_device[idx];
+    }
+}
 
 void matrix_minus(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
 {
@@ -104,20 +104,20 @@ void matrix_minus(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
     }
 }
 
-// __global__ void matrix_minus_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
-// {
-//     assert ( (m1->columns == m2->columns)  &&
-//              (m1->columns == res->columns) &&
-//              (m1->rows == m2->rows)        &&
-//              (m1->rows == res->rows));
+__global__ void matrix_minus_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
+{
+    assert ( (m1->columns == m2->columns)  &&
+             (m1->columns == res->columns) &&
+             (m1->rows == m2->rows)        &&
+             (m1->rows == res->rows));
 
-//     unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
+    unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
 
-//     if (idx < m1->rows * m1->columns)
-//     { 
-//         res->data_device.get()[idx] = m1->data_device.get()[idx] - m2->data_device.get()[idx];
-//     }
-// }
+    if (idx < m1->rows * m1->columns)
+    { 
+        res->data_device[idx] = m1->data_device[idx] - m2->data_device[idx];
+    }
+}
 
 void matrix_dot(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
 {
@@ -153,18 +153,18 @@ void matrix_function(cudaMatrix *m1, double (*f)(double), cudaMatrix *res)
     }
 }
 
-// __global__ void matrix_function_Kernel(cudaMatrix *m1, double (*f)(double), cudaMatrix *res)
-// {
-//     assert ( (m1->columns == res->columns) &&             
-//             (m1->rows == res->rows));
+__global__ void matrix_function_Kernel(cudaMatrix *m1, double (*f)(double), cudaMatrix *res)
+{
+    assert ( (m1->columns == res->columns) &&             
+            (m1->rows == res->rows));
 
-//     unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
+    unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
 
-//     if (idx < m1->rows * m1->columns)
-//     { 
-//         res->data_device.get()[idx] = f(m1->data_device.get()[idx]);
-//     }
-// }
+    if (idx < m1->rows * m1->columns)
+    { 
+        res->data_device[idx] = f(m1->data_device[idx]);
+    }
+}
 
 void matrix_transpose(cudaMatrix *m1, cudaMatrix *res)
 {
@@ -191,18 +191,18 @@ void matrix_scalar(cudaMatrix *m1, double s, cudaMatrix *res)
     }
 }
 
-// __global__ void matrix_scalar_Kernel(cudaMatrix *m1, double s, cudaMatrix *res)
-// {
-//     assert ( (m1->rows == res->rows) &&             
-//              (m1->columns == res->columns));
+__global__ void matrix_scalar_Kernel(cudaMatrix *m1, double s, cudaMatrix *res)
+{
+    assert ( (m1->rows == res->rows) &&             
+             (m1->columns == res->columns));
 
-//     unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
+    unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
 
-//     if (idx < m1->rows * m1->columns)
-//     { 
-//         res->data_device.get()[idx] = m1->data_device.get()[idx] * s;
-//     }
-// }
+    if (idx < m1->rows * m1->columns)
+    { 
+        res->data_device[idx] = m1->data_device[idx] * s;
+    }
+}
 
 void matrix_memcpy(cudaMatrix *dest, const cudaMatrix *src)
 {
