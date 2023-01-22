@@ -44,5 +44,9 @@ __global__ void matrix_scalar_Kernel(double *m1, double s, double *res, int rows
 
 __global__ void matrix_function_Kernel(double *m1, double (*f)(double), double *res, int rows, int col);
 
+__global__ void matrix_dot_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res);
+
+__global__ void matrix_transpose_Kernel(cudaMatrix *m1, cudaMatrix *res);
+
 
 #endif
