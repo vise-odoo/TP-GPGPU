@@ -138,11 +138,6 @@ void forward(ann_t *nn, double (*activation_function)(double))
         z1-> copyHostToDevice(); 
         matrix_sum_Kernel<<<8, 1024>>>(z1->data_device, z2->data_device, nn->layers[l]->z->data_device, z1->rows, z1-> columns); // z^l <- z1 + z2 <=> z^l <- w^l x a^(l-1) + b^l x 1      
         nn->layers[l]->z->copyDeviceToHost();
-        for (int k = 0; k < 75; k++){
-            if (nn->layers[l]->z->data_host[k] > 0){
-                printf("z %lf \n", nn->layers[l]->z->data_host[k]);
-            }
-        }
         matrix_function(nn->layers[l]->z, activation_function, nn->layers[l]->activations); // a^l = f(z^l)
      
         z1->destroyCudaMatrix();
