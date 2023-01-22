@@ -36,13 +36,13 @@ void matrix_scalar(cudaMatrix *m1, double s, cudaMatrix *res);
 
 void matrix_memcpy(cudaMatrix *dest, const cudaMatrix *src);
 
-__global__ void matrix_sum_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res);
+__global__ void matrix_sum_Kernel(double* m1, double *m2, double *res, int rows, int col);
 
-__global__ void matrix_minus_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res);
+__global__ void matrix_minus_Kernel(double *m1, double *m2, double *res, int rows, int col);
 
-__global__ void matrix_scalar_Kernel(cudaMatrix *m1, double s, cudaMatrix *res);
+__global__ void matrix_scalar_Kernel(double *m1, double s, double *res, int rows, int col);
 
-__global__ void matrix_function_Kernel(cudaMatrix *m1, double (*f)(double), cudaMatrix *res);
+__global__ void matrix_function_Kernel(double *m1, double (*f)(double), double *res, int rows, int col);
 
 
 #endif

@@ -76,18 +76,13 @@ void matrix_sum(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
     }
 }
 
-__global__ void matrix_sum_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res, int rows, int col)
+__global__ void matrix_sum_Kernel(double *m1, double *m2, double *res, int rows, int col)
 {
-    assert ( (m1->columns == m2->columns)  &&
-             (m1->columns == res->columns) &&
-             (m1->rows == m2->rows)        &&
-             (m1->rows == res->rows));
-
     unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
 
-    if (idx < m1->rows * m1->columns)
+    if (idx < rows * col)
     { 
-        res->data_device[idx] = m1->data_device[idx] + m2->data_device[idx];
+        res[idx] = m1[idx] + m2[idx];
     }
 }
 
@@ -104,18 +99,13 @@ void matrix_minus(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
     }
 }
 
-__global__ void matrix_minus_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
+__global__ void matrix_minus_Kernel(double *m1, double *m2, double *res, int rows, int col)
 {
-    assert ( (m1->columns == m2->columns)  &&
-             (m1->columns == res->columns) &&
-             (m1->rows == m2->rows)        &&
-             (m1->rows == res->rows));
-
     unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
 
-    if (idx < m1->rows * m1->columns)
+    if (idx < rows * col)
     { 
-        res->data_device[idx] = m1->data_device[idx] - m2->data_device[idx];
+        res[idx] = m1[idx] - m2[idx];
     }
 }
 
@@ -153,16 +143,13 @@ void matrix_function(cudaMatrix *m1, double (*f)(double), cudaMatrix *res)
     }
 }
 
-__global__ void matrix_function_Kernel(cudaMatrix *m1, double (*f)(double), cudaMatrix *res)
+__global__ void matrix_function_Kernel(double *m1, double (*f)(double), double *res, int rows, int col)
 {
-    assert ( (m1->columns == res->columns) &&             
-            (m1->rows == res->rows));
-
     unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
 
-    if (idx < m1->rows * m1->columns)
+    if (idx < rows * col)
     { 
-        res->data_device[idx] = f(m1->data_device[idx]);
+        res[idx] = f(m1[idx]);
     }
 }
 
@@ -191,16 +178,13 @@ void matrix_scalar(cudaMatrix *m1, double s, cudaMatrix *res)
     }
 }
 
-__global__ void matrix_scalar_Kernel(cudaMatrix *m1, double s, cudaMatrix *res)
+__global__ void matrix_scalar_Kernel(double *m1, double s, double *res, int rows, int col)
 {
-    assert ( (m1->rows == res->rows) &&             
-             (m1->columns == res->columns));
-
     unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
 
-    if (idx < m1->rows * m1->columns)
+    if (idx < rows * col)
     { 
-        res->data_device[idx] = m1->data_device[idx] * s;
+        res[idx] = m1[idx] * s;
     }
 }
 
