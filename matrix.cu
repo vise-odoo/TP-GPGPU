@@ -132,14 +132,14 @@ void matrix_dot(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
     }
 }
 
-__global__ void matrix_dot_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
-{
-    assert ( (m1->columns == m2->rows)  &&
-             (m1->rows == res->rows)    &&
-             (m2->columns == res->columns));
+// __global__ void matrix_dot_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
+// {
+//     assert ( (m1->columns == m2->rows)  &&
+//              (m1->rows == res->rows)    &&
+//              (m2->columns == res->columns));
 
-    unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
-}
+//     unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
+// }
 
 void matrix_function(cudaMatrix *m1, double (*f)(double), cudaMatrix *res)
 {
@@ -176,27 +176,27 @@ void matrix_transpose(cudaMatrix *m1, cudaMatrix *res)
     }
 }
 
-__global__ void matrix_transpose_Kernel(cudaMatrix *m1, cudaMatrix *res)
-{
-    assert ( (m1->columns == res->rows) &&             
-             (m1->rows == res->columns));
+// __global__ void matrix_transpose_Kernel(cudaMatrix *m1, cudaMatrix *res)
+// {
+//     assert ( (m1->columns == res->rows) &&             
+//              (m1->rows == res->columns));
 
-    unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
+//     unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
 
-    __shared__ double smemArray[1024];
+//     __shared__ double smemArray[1024];
 
-    if (idx < m1->rows * m1->columns)
-    {
-        smemArray[idx] = (*m1)[idx];
-    }
+//     if (idx < m1->rows * m1->columns)
+//     {
+//         smemArray[idx] = (*m1)[idx];
+//     }
 
-    __syncthreads();
+//     __syncthreads();
 
-    if (idx < m1->rows * m1->columns)
-    {
-        (*m1)[idx] = smemArray[idx];
-    }
-}
+//     if (idx < m1->rows * m1->columns)
+//     {
+//         (*m1)[idx] = smemArray[idx];
+//     }
+// }
 
 void matrix_scalar(cudaMatrix *m1, double s, cudaMatrix *res)
 {
