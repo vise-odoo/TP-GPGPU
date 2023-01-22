@@ -132,9 +132,17 @@ void forward(ann_t *nn, double (*activation_function)(double))
             (*one)[idx] = 1.0;
 
         matrix_dot(nn->layers[l]->weights, nn->layers[l-1]->activations, z1); // z1 <- w^l x a^(l-1)
-        matrix_dot(nn->layers[l]->biases, one, z2); // z2 <- b^l x 1        
-        matrix_sum(z1, z2, nn->layers[l]->z); // z^l <- z1 + z2 <=> z^l <- w^l x a^(l-1) + b^l x 1      
+        matrix_dot(nn->layers[l]->biases, one, z2); // z2 <- b^l x 1       
 
+        z1->copyHostToDevice();
+        z1-> copyHostToDevice(); 
+        matrix_sum_Kernel<<<8, 1024>>>(z1->data_device, z2->data_device, nn->layers[l]->z->data_device, z1->rows, z1-> columns); // z^l <- z1 + z2 <=> z^l <- w^l x a^(l-1) + b^l x 1      
+        nn->layers[l]->z->copyDeviceToHost();
+        for (int k = 0; k < 75; k++){
+            if (nn->layers[l]->z->data_host[k] > 0){
+                printf("z %lf \n", nn->layers[l]->z->data_host[k]);
+            }
+        }
         matrix_function(nn->layers[l]->z, activation_function, nn->layers[l]->activations); // a^l = f(z^l)
      
         z1->destroyCudaMatrix();
