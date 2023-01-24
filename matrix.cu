@@ -249,7 +249,7 @@ void matrix_scalar(cudaMatrix *m1, double s, cudaMatrix *res)
     }
 }
 
-__device__ void matrix_scalar_Device(double *m1, double s, double *res, int rows, int col)
+__global__ void matrix_scalar_Device(double *m1, double s, double *res, int rows, int col)
 {
     unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
 
