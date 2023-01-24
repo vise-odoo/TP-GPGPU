@@ -239,7 +239,7 @@ void matrix_scalar(cudaMatrix *m1, double s, cudaMatrix *res)
     }
 }
 
-__global__ void matrix_scalar_Kernel(double *m1, double s, double *res, int rows, int col)
+__device__ void matrix_scalar_Device(double *m1, double s, double *res, int rows, int col)
 {
     unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
 
@@ -247,6 +247,16 @@ __global__ void matrix_scalar_Kernel(double *m1, double s, double *res, int rows
     { 
         res[idx] = m1[idx] * s;
     }
+}
+
+void matrix_scalar_Kernel(cudaMatrix *m1, double s, cudaMatrix *res)
+{
+    assert ( (m1->rows == res->rows) &&             
+             (m1->columns == res->columns));
+
+    m1->copyHostToDevice();
+    matrix_scalar_Device<<<8, 1024>>>(m1->data_device, s, res->data_device, m1->rows, m1->columns);
+    res->copyDeviceToHost();
 }
 
 void matrix_memcpy(cudaMatrix *dest, const cudaMatrix *src)
