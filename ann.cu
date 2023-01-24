@@ -136,7 +136,7 @@ void forward(ann_t *nn, double (*activation_function)(double))
 
         z1->copyHostToDevice();
         z1-> copyHostToDevice(); 
-        matrix_sum_Kernel<<<8, 1024>>>(z1->data_device, z2->data_device, nn->layers[l]->z->data_device, z1->rows, z1-> columns); // z^l <- z1 + z2 <=> z^l <- w^l x a^(l-1) + b^l x 1      
+        matrix_sum_Kernel(z1, z2, nn->layers[l]->z); // z^l <- z1 + z2 <=> z^l <- w^l x a^(l-1) + b^l x 1      
         nn->layers[l]->z->copyDeviceToHost();
         
         matrix_function(nn->layers[l]->z, activation_function, nn->layers[l]->activations); // a^l = f(z^l)
