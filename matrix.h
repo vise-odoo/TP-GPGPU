@@ -44,6 +44,8 @@ void matrix_scalar_Kernel(cudaMatrix *m1, double s, cudaMatrix *res);
 
 void matrix_function_Kernel(cudaMatrix *m1, double (*f)(double), cudaMatrix *res);
 
+void hadamard_product_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res);
+
 // __global__ void matrix_dot_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res);
 
 // __global__ void matrix_transpose_Kernel(cudaMatrix *m1, cudaMatrix *res);

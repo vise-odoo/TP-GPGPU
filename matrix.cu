@@ -63,6 +63,30 @@ void hadamard_product(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
     }
 }
 
+__global__ void hadamard_product_Device(double *m1, double *m2, double *res, int rows, int col)
+{
+    unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
+
+    if (idx < rows * col)
+    { 
+        res[idx] = m1[idx] * m2[idx];
+    }
+}
+
+void hadamard_product_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
+{
+    assert ( (m1->columns == m2->columns)   &&
+             (m1->columns == res->columns)  &&
+             (m1->rows == m2->rows)         &&
+             (m1->rows == res->rows));
+
+    m1->copyHostToDevice();
+    m2->copyHostToDevice();
+    hadamard_product_Device<<<8, 1024>>>(m1->data_device, m2->data_device, res->data_device, m1->rows, m1->columns);
+    res->copyDeviceToHost();
+}
+
+
 void matrix_sum(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
 {
     assert ( (m1->columns == m2->columns)  &&
