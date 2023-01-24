@@ -109,7 +109,7 @@ void matrix_minus(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
     }
 }
 
-__global__ void matrix_minus_Kernel(double *m1, double *m2, double *res, int rows, int col)
+__global__ void matrix_minus_Device(double *m1, double *m2, double *res, int rows, int col)
 {
     unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
 
@@ -117,6 +117,16 @@ __global__ void matrix_minus_Kernel(double *m1, double *m2, double *res, int row
     { 
         res[idx] = m1[idx] - m2[idx];
     }
+}
+
+void matrix_minus_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
+{
+    assert ( (m1->columns == m2->columns)  &&
+             (m1->columns == res->columns) &&
+             (m1->rows == m2->rows)        &&
+             (m1->rows == res->rows));
+
+    matrix_minus_Device<<<8, 1024>>>(m1->data_device, m2->data_device, res->data_device, m1->rows, m1->columns);
 }
 
 void matrix_dot(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
