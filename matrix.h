@@ -42,7 +42,7 @@ void matrix_minus_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res);
 
 void matrix_scalar_Kernel(cudaMatrix *m1, double s, cudaMatrix *res);
 
-void matrix_function_Kernel(cudaMatrix *m1, double (*f)(double), cudaMatrix *res);
+void matrix_function_Kernel(cudaMatrix *m1, int fn, cudaMatrix *res);
 
 void hadamard_product_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res);
 

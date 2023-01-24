@@ -40,8 +40,8 @@ void set_input(ann_t *nn, cudaMatrix* input);
 
 void print_nn(ann_t *nn);
 
-void forward(ann_t *nn, double (*activation_function)(double));
+void forward(ann_t *nn, int activation_function);
 
-void backward(ann_t *nn, cudaMatrix* cy, double (*derivative_actfunct)(double));
+void backward(ann_t *nn, cudaMatrix* cy, int derivative_actfunct);
 
 #endif

@@ -121,7 +121,7 @@ void print_nn(ann_t *nn)
     }
 }
 
-void forward(ann_t *nn, double (*activation_function)(double))
+void forward(ann_t *nn, int activation_function)
 {
     for (int l = 1; l < nn->number_of_layers; l++)
     {
@@ -143,7 +143,7 @@ void forward(ann_t *nn, double (*activation_function)(double))
     }
 }
 
-void backward(ann_t *nn, cudaMatrix *y, double (*derivative_actfunct)(double))
+void backward(ann_t *nn, cudaMatrix *y, int derivative_actfunct)
 {
     unsigned L = nn->number_of_layers-1;
 
