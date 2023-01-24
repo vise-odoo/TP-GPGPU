@@ -218,12 +218,19 @@ __global__ void matrix_function_Device(double *m1, double (*f)(double), double *
 
 void matrix_function_Kernel(cudaMatrix *m1, double (*f)(double), cudaMatrix *res)
 {
+    double (*f_device)(double);
+
     assert ( (m1->columns == res->columns) &&             
              (m1->rows == res->rows));
 
-    m1->copyHostToDevice();
+
+    cudaMalloc((void**)&f_device, sizeof(f));
+    cudaMemcpy(f_device, f, sizeof(f), cudaMemcpyHostToDevice);
+    m1->copyHostToDevice(); 
     matrix_function_Device<<<8, 1024>>>(m1->data_device, f, res->data_device, m1->rows, m1->columns);
     res->copyDeviceToHost();
+
+    cudaFree(f_device);
 }
 
 void matrix_transpose(cudaMatrix *m1, cudaMatrix *res)
