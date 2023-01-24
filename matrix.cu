@@ -93,7 +93,12 @@ void matrix_sum_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
              (m1->rows == m2->rows)        &&
              (m1->rows == res->rows));
 
+    m1->copyHostToDevice();
+    m2->copyHostToDevice();
+
     matrix_sum_Device<<<8, 1024>>>(m1->data_device, m2->data_device, res->data_device, m1->rows, m1->columns);
+
+    res->copyDeviceToHost();
 }
 
 void matrix_minus(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
@@ -126,7 +131,12 @@ void matrix_minus_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
              (m1->rows == m2->rows)        &&
              (m1->rows == res->rows));
 
+    m1->copyHostToDevice();
+    m2->copyHostToDevice();
+
     matrix_minus_Device<<<8, 1024>>>(m1->data_device, m2->data_device, res->data_device, m1->rows, m1->columns);
+
+    res->copyDeviceToHost();
 }
 
 void matrix_dot(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)

@@ -134,10 +134,7 @@ void forward(ann_t *nn, double (*activation_function)(double))
         matrix_dot(nn->layers[l]->weights, nn->layers[l-1]->activations, z1); // z1 <- w^l x a^(l-1)
         matrix_dot(nn->layers[l]->biases, one, z2); // z2 <- b^l x 1       
 
-        z1->copyHostToDevice();
-        z1-> copyHostToDevice(); 
-        matrix_sum_Kernel(z1, z2, nn->layers[l]->z); // z^l <- z1 + z2 <=> z^l <- w^l x a^(l-1) + b^l x 1      
-        nn->layers[l]->z->copyDeviceToHost();
+        matrix_sum_Kernel(z1, z2, nn->layers[l]->z); // z^l <- z1 + z2 <=> z^l <- w^l x a^(l-1) + b^l x 1
         
         matrix_function(nn->layers[l]->z, activation_function, nn->layers[l]->activations); // a^l = f(z^l)
      
@@ -153,7 +150,7 @@ void backward(ann_t *nn, cudaMatrix *y, double (*derivative_actfunct)(double))
 
     cudaMatrix *dfzL = initCudaMatrix(nn->layers[L]->number_of_neurons, nn->minibatch_size);
 
-    matrix_minus(nn->layers[L]->activations, y, nn->layers[L]->delta);  // delta^(L) = (a^L - y)
+    matrix_minus_Kernel(nn->layers[L]->activations, y, nn->layers[L]->delta);  // delta^(L) = (a^L - y)
     matrix_function(nn->layers[L]->z, derivative_actfunct, dfzL); // f'(z^(L))
     hadamard_product(nn->layers[L]->delta, dfzL, nn->layers[L]->delta); // delta^(L) = (a^L - y) o f'(z^(L))
 
