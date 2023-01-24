@@ -182,7 +182,7 @@ void matrix_function(cudaMatrix *m1, double (*f)(double), cudaMatrix *res)
     }
 }
 
-__global__ void matrix_function_Kernel(double *m1, double (*f)(double), double *res, int rows, int col)
+__global__ void matrix_function_Device(double *m1, double (*f)(double), double *res, int rows, int col)
 {
     unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
 
@@ -190,6 +190,16 @@ __global__ void matrix_function_Kernel(double *m1, double (*f)(double), double *
     { 
         res[idx] = f(m1[idx]);
     }
+}
+
+void matrix_function_Kernel(cudaMatrix *m1, double (*f)(double), cudaMatrix *res)
+{
+    assert ( (m1->columns == res->columns) &&             
+             (m1->rows == res->rows));
+
+    m1->copyHostToDevice();
+    matrix_function_Device<<<8, 1024>>>(m1->data_device, f, res->data_device, m1->rows, m1->columns);
+    res->copyDeviceToHost();
 }
 
 void matrix_transpose(cudaMatrix *m1, cudaMatrix *res)

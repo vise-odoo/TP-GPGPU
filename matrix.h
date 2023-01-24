@@ -42,7 +42,7 @@ void matrix_minus_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res);
 
 void matrix_scalar_Kernel(cudaMatrix *m1, double s, cudaMatrix *res);
 
-__global__ void matrix_function_Kernel(double *m1, double (*f)(double), double *res, int rows, int col);
+void matrix_function_Kernel(cudaMatrix *m1, double (*f)(double), cudaMatrix *res);
 
 // __global__ void matrix_dot_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res);
 
