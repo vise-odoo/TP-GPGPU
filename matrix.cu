@@ -187,14 +187,29 @@ void matrix_dot(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
     }
 }
 
-// __global__ void matrix_dot_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
-// {
-//     assert ( (m1->columns == m2->rows)  &&
-//              (m1->rows == res->rows)    &&
-//              (m2->columns == res->columns));
+void matrix_dot_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
+{
+    assert ( (m1->columns == m2->rows)  &&
+             (m1->rows == res->rows)    &&
+             (m2->columns == res->columns));
 
-//     unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
-// }
+    matrix_dot_Device<<<8, (32,32)>>>(m1->data_device, m2->data_device, res->data_device, m1->rows,m1->columns, m2->columns);
+}
+
+__global__ void matrix_dot_Device(double *m1,double *m2, double *res, int m, int n, int k)
+{ 
+    int row = blockIdx.y * blockDim.y + threadIdx.y; 
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+    int sum = 0;
+    if( col < k && row < m) 
+    {
+        for(int i = 0; i < n; i++) 
+        {
+            sum += m1[row * n + i] * m2[i * k + col];
+        }
+        res[row * k + col] = sum;
+    }
+} 
 
 void matrix_function(cudaMatrix *m1, double (*f)(double), cudaMatrix *res)
 {
@@ -267,6 +282,26 @@ void matrix_transpose(cudaMatrix *m1, cudaMatrix *res)
     }
 }
 
+__global__ void matrix_transpose_Device(double* m1, double* res, int rows, int cols) 
+{
+    unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    unsigned int idy = blockIdx.y * blockDim.y + threadIdx.y;
+
+    if (idx < cols && idy < rows) 
+    {
+        unsigned int index = idy * cols + idx;
+        unsigned int idx_transpose = idx * rows + idy;
+        m1[idx_transpose] = res[index];
+    }
+}
+
+void matrix_transpose_Kernel(cudaMatrix *m1, cudaMatrix *res)
+{
+    assert ( (m1->columns == res->rows) &&             
+             (m1->rows == res->columns));
+    
+    matrix_transpose_Device<<<8, (32,32)>>>(m1->data_device, res->data_device, m1->rows, m1->columns);
+}
 // __global__ void matrix_transpose_Kernel(cudaMatrix *m1, cudaMatrix *res)
 // {
 //     assert ( (m1->columns == res->rows) &&             

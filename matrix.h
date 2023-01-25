@@ -46,9 +46,9 @@ void matrix_function_Kernel(cudaMatrix *m1, int fn, cudaMatrix *res);
 
 void hadamard_product_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res);
 
-// __global__ void matrix_dot_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res);
+void matrix_dot_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res);
 
-// __global__ void matrix_transpose_Kernel(cudaMatrix *m1, cudaMatrix *res);
+void matrix_transpose_Kernel(cudaMatrix *m1, cudaMatrix *res);
 
 
 #endif
