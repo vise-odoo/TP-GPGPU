@@ -298,6 +298,32 @@ __global__ void matrix_transpose_Device(double* m1, double* res, int rows, int c
     }
 }
 
+__global__ void matrix_transpose_shared_Device(double* m1, double* res, int rows, int cols)
+{
+	__shared__ float shared[32][33]; // 33 car il peut y avoir des erreurs de sortie de tableaux parfois
+	
+	unsigned int xIndex = blockIdx.x * blockDim.x + threadIdx.x;
+	unsigned int yIndex = blockIdx.y * blockDim.y + threadIdx.y;
+	if((xIndex < rows) && (yIndex < cols))
+	{
+        // Ajout des données dans la mémoire partagée, de façon non transposée
+		unsigned int idx = yIndex * rows + xIndex; 
+		shared[threadIdx.y][threadIdx.x] = m1[idx];
+	}
+
+	__syncthreads();
+    // On recalcule les indices
+	xIndex = blockIdx.y * blockDim.x + threadIdx.x;
+	yIndex = blockIdx.x * blockDim.y + threadIdx.y;
+
+	if((xIndex < cols) && (yIndex < rows))
+	{
+		unsigned int idx_transpose = yIndex * cols + xIndex;
+        // Copie des données en transposant le résultat.
+		res[idx_transpose] = shared[threadIdx.x][threadIdx.y];
+	}
+}
+
 void matrix_transpose_Kernel(cudaMatrix *m1, cudaMatrix *res)
 {
     assert ( (m1->columns == res->rows) &&             
@@ -307,27 +333,7 @@ void matrix_transpose_Kernel(cudaMatrix *m1, cudaMatrix *res)
     matrix_transpose_Device<<<8, (32,32)>>>(m1->data_device, res->data_device, m1->rows, m1->columns);
     res->copyDeviceToHost();
 }
-// __global__ void matrix_transpose_Kernel(cudaMatrix *m1, cudaMatrix *res)
-// {
-//     assert ( (m1->columns == res->rows) &&             
-//              (m1->rows == res->columns));
 
-//     unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
-
-//     __shared__ double smemArray[1024];
-
-//     if (idx < m1->rows * m1->columns)
-//     {
-//         smemArray[idx] = (*m1)[idx];
-//     }
-
-//     __syncthreads();
-
-//     if (idx < m1->rows * m1->columns)
-//     {
-//         (*m1)[idx] = smemArray[idx];
-//     }
-// }
 
 void matrix_scalar(cudaMatrix *m1, double s, cudaMatrix *res)
 {
