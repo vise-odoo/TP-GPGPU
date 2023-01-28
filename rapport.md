@@ -8,7 +8,7 @@
     - [Création d'une structure adéquate aux calculs parallèles](#création-dune-structure-adéquate-aux-calculs-parallèles)
     - [Parallélisation naive des fonctions](#parallélisation-naive-des-fonctions)
 
-# TP Timothée - Vincent
+# TP Timothée MESNARD - Vincent SEVESTRE
 
 ## Partie 1 : découverte du code fourni en C
 
@@ -16,7 +16,7 @@
 
 Apèrs avoir ouvert le code source, nous avons eu deux problèmes qui empêchent la bonne compilation (du fait que l'on soit sur Windows, utilisant le compilateur cl) :
 
-Dans `ann.cu`, la ligne suivant doit être placée en début de script pour définir correctement la constante `M_PI`.
+Dans `ann.cu`, la ligne suivante doit être placée en début de script pour définir correctement la constante `M_PI`.
 ```C
 #define _USE_MATH_DEFINES // l. 1
 ...
@@ -36,10 +36,11 @@ bool generate = false;
 double z1 = 0;
 ```
 
-Utiliser la commande suivante pour compiler :
+Utiliser la commande suivante pour compiler : 
 ```bash
-nvcc -o tp main.cu matrix.cu ann.cu mnist.cu
+nvcc -o tp main.cu matrix.cu ann.cu mnist.cu cudaMatrix.cu
 ```
+(Il ne faut pas oublier **`cudaMatrix.cu`**, qui est un nouveau fichier !)
 
 ### Mise en place d'un time profiler
 
@@ -79,7 +80,7 @@ Pour simplifier le code et réduire sa taille, une structure de matrice particul
 
 En se basant sur la définition préalable de `matrix_t`, les attributs principaux de `cudaMatrix` sont :
 
-```C
+```C++
 unsigned rows; // Nombre de lignes de la matrice
 unsigned columns; // Nombre de colonnes de la matrice
 double* data_device; // Pointeur vers un tableau de doubles, stocké sur le CPU
@@ -89,7 +90,7 @@ double* data_host; // Pointeur vers un tableau de doubles, stocké sur le GPU
 L'intérêt d'une telle fonction est de pouvoir créer des méthodes propres à la classe permettant d'allouer et de copier la mémoire.
 Ainsi, les fonctions suivantes ont été écrites :
 
-```C
+```C++
 void allocateMemory(); // Alloue la mémoire en fonction de la taille de la matrice, i.e. rows*columns*sizeof(double)
 void copyHostToDevice(); // Copie les données de data_host vers data_device
 void copyDeviceToHost(); // Copie les données de data_device vers data_host
@@ -98,4 +99,49 @@ void destroyCudaMatrix(); // Supprime les tableaux data_host et data_device
 
 Dans les fonctions parallélisées, on pourra donc se passer d'appeler `cudaMalloc` et `cudaMemcpy` en utilisant uniquement les méthodes de la classe.
 
+Pour initialiser une `cudaMatrix`, l'appel est le suivant :
+
+```C++
+cudaMatrix* m = initCudaMatrix(rows, columns);
+```
+
+La fonction `initCudaMatrix` renvoie un pointeur vers une `cudaMatrix ` de taille rows*columns, où les allocations de mémoire CPU & GPU ont déjà été effectuées.
 ### Parallélisation naive des fonctions
+
+Pour commencer l'amélioration du programme, une implémentation naive des fonctions matricielles a été réalisée. Ces fonctions peuvent être consultées dans le fichier `matrix.cu`.
+Cette implémentation naive a pour but de retirer la plupart des boucles `for` en utilisant une grille de threads, qui peuvent être aussi bien en 1D qu'en 2D.
+
+Chacune de ces fonctions parallélisées est en deux parties : 
+
+- La première partie est de la forme `func_Kernel(cudaMatrix* m, ...)`, c'est ce type de fonction qui est appelé dans `main.cu`et `ann.cu`. Ces fonctions réalisent les instructions d'assertion, puis envoient le calcul sur le GPU pour le réaliser.
+
+- La seconde partie est de la forme `__global__ func_Device(double* m, ...)`. Ces fonctions effectuent le calcul sur le GPU.
+
+Donnons un exemple d'utilisation de ces fonctions :
+
+```C++
+void func_Kernel(cudaMatrix* m1, cudaMatrix* res){
+  assert((m1->rows == res->rows) && 
+         (m1->columns == res-> columns))
+
+  m1->copyHostToDevice();
+  func_Device<<<N_BLOCK, DIM_BLOCK>>>(m1->data_device, res->data_device, m1->rows, m1->columns);
+  res->copyDeviceToHost();
+}
+```
+```C++
+__global__ func_Device(double* m1, double* res, int rows, int cols){
+    unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
+
+    if (idx < rows * cols){res[idx] = func(m1[idx])}
+}
+```
+
+Toutes les fonctions du fichier `matrix.cu` ont subi le traitement de ce parallélisme. Ainsi, on peut décliner l'ajout de `matrix_sum_Kernel, matrix_minus_Kernel, matrix_scalar_Kernel, matrix_function_Kernel, hadamard_product_Kernel, matrix_dot_Kernel` et de `matrix_transpose_Kernel`.
+
+Le gain de temps est le suivant : 
+
+- En utilisant la structure `cudaMatrix` sur CPU, sans utiliser les fonctions parallélisées : **#TODO** s, soit une perte de temps de **#TODO** s.
+- Avec la structure `cudaMatrix` et les fonctions élementaires sur GPU (`matrix_sum_Kernel, matrix_minus_Kernel, matrix_scalar_Kernel, matrix_function_Kernel, hadamard_product_Kernel`) : **#TODO** s, soit une perte de temps de **#TODO** s.
+- Avec la structure `cudaMatrix`et toutes les fonctions sur le GPU, **#TODO** s, soit une perte de temps de **#TODO** s.
+
