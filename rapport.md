@@ -150,4 +150,23 @@ Le gain de temps est le suivant :
 
 L'implémentation naive peut évidemment être améliorée. Par exemple, les mécanismes de **mémoire partagée** et d'**accès fusionné** n'ont pas été pris en compte dans l'écriture des fonctions précédentes.
 
-Les deux fonctions occupant le plus de mémoire étant `matrix_transpose` et `matrix_dot`, ce sont ces fonctions qui vont être raffinées.
+Les fonctions occupant le plus de mémoire et prenant le plus de temps de calcul vont être raffinées.
+
+- Pour `matrix_transpose`, une mémoire partagée est créée pour importer dans un tableau temporaire les valeurs locales de la matrice à transposer. Ainsi, un accès fusionné aux valeurs est effectué. Les chargements mémoires sont limités, et le temps d'exécution est amélioré.
+
+```C++
+__global__ void matrix_transpose_shared_Device(double* m1, double* res, int rows, int cols)
+{
+	__shared__ float shared[32][32];
+	
+	unsigned int xIndex = blockIdx.x * blockDim.x + threadIdx.x;
+	unsigned int yIndex = blockIdx.y * blockDim.y + threadIdx.y;
+
+	if((xIndex < rows) && (yIndex < cols)){shared[threadIdx.y][threadIdx.x] = m1[yIndex * rows + xIndex];} // Copie dans la mémoire partagée
+
+	__syncthreads();
+
+	if((xIndex < cols) && (yIndex < rows)){res[yIndex * cols + xIndex;] = shared[threadIdx.x][threadIdx.y];} // Copie dans le résultat
+}
+```
+
