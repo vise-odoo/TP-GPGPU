@@ -7,6 +7,7 @@
   - [Partie 2 : optimisation en utilisant le GPU](#partie-2--optimisation-en-utilisant-le-gpu)
     - [Création d'une structure adéquate aux calculs parallèles](#création-dune-structure-adéquate-aux-calculs-parallèles)
     - [Parallélisation naive des fonctions](#parallélisation-naive-des-fonctions)
+    - [Parallélisation avancée](#parallélisation-avancée)
 
 # TP Timothée MESNARD - Vincent SEVESTRE
 
@@ -143,5 +144,10 @@ Le gain de temps est le suivant :
 
 - En utilisant la structure `cudaMatrix` sur CPU, sans utiliser les fonctions parallélisées : **#TODO** s, soit une perte de temps de **#TODO** s.
 - Avec la structure `cudaMatrix` et les fonctions élementaires sur GPU (`matrix_sum_Kernel, matrix_minus_Kernel, matrix_scalar_Kernel, matrix_function_Kernel, hadamard_product_Kernel`) : **#TODO** s, soit une perte de temps de **#TODO** s.
-- Avec la structure `cudaMatrix`et toutes les fonctions sur le GPU, **#TODO** s, soit une perte de temps de **#TODO** s.
+- Avec la structure `cudaMatrix` et toutes les fonctions sur le GPU, **#TODO** s, soit une perte de temps de **#TODO** s.
 
+### Parallélisation avancée
+
+L'implémentation naive peut évidemment être améliorée. Par exemple, les mécanismes de **mémoire partagée** et d'**accès fusionné** n'ont pas été pris en compte dans l'écriture des fonctions précédentes.
+
+Les deux fonctions occupant le plus de mémoire étant `matrix_transpose` et `matrix_dot`, ce sont ces fonctions qui vont être raffinées.
