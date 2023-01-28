@@ -5,6 +5,8 @@
     - [Débugage du code en C](#débugage-du-code-en-c)
     - [Mise en place d'un time profiler](#mise-en-place-dun-time-profiler)
   - [Partie 2 : optimisation en utilisant le GPU](#partie-2--optimisation-en-utilisant-le-gpu)
+    - [Création d'une structure adéquate aux calculs parallèles](#création-dune-structure-adéquate-aux-calculs-parallèles)
+    - [Parallélisation naive des fonctions](#parallélisation-naive-des-fonctions)
 
 # TP Timothée - Vincent
 
@@ -70,3 +72,30 @@ On remarque que l'on est limité par la vitesse de la clock, cependant, on peut 
 
 ## Partie 2 : optimisation en utilisant le GPU
 
+### Création d'une structure adéquate aux calculs parallèles
+
+Dans un programme de calcul parallèle, il faut fréquemment effectuer des allocations de mémoire et des copies de variables entre le processeur et la carte graphique.
+Pour simplifier le code et réduire sa taille, une structure de matrice particulière a été construite, sous la forme d'une classe `cudaMatrix` que l'on trouve dans le fichier `cudaMatrix.cu`.
+
+En se basant sur la définition préalable de `matrix_t`, les attributs principaux de `cudaMatrix` sont :
+
+```C
+unsigned rows; // Nombre de lignes de la matrice
+unsigned columns; // Nombre de colonnes de la matrice
+double* data_device; // Pointeur vers un tableau de doubles, stocké sur le CPU
+double* data_host; // Pointeur vers un tableau de doubles, stocké sur le GPU
+```
+
+L'intérêt d'une telle fonction est de pouvoir créer des méthodes propres à la classe permettant d'allouer et de copier la mémoire.
+Ainsi, les fonctions suivantes ont été écrites :
+
+```C
+void allocateMemory(); // Alloue la mémoire en fonction de la taille de la matrice, i.e. rows*columns*sizeof(double)
+void copyHostToDevice(); // Copie les données de data_host vers data_device
+void copyDeviceToHost(); // Copie les données de data_device vers data_host
+void destroyCudaMatrix(); // Supprime les tableaux data_host et data_device
+```
+
+Dans les fonctions parallélisées, on pourra donc se passer d'appeler `cudaMalloc` et `cudaMemcpy` en utilisant uniquement les méthodes de la classe.
+
+### Parallélisation naive des fonctions
