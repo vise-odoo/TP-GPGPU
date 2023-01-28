@@ -55,16 +55,6 @@ void shuffle(unsigned *t, const unsigned size, const unsigned number_of_switch)
     }
 }
 
-double sigmoid(double x)
-{
-    return 1 / (1 + exp(-x));
-}
-
-double dsigmoid(double x)
-{
-    return sigmoid(x)*(1-sigmoid(x));
-}
-
 double accuracy(image* test_img, byte* test_label, unsigned datasize, unsigned minibatch_size, ann_t *nn)
 {
     unsigned good = 0;
@@ -78,8 +68,7 @@ double accuracy(image* test_img, byte* test_label, unsigned datasize, unsigned m
         populate_minibatch(x, y, &idx[i], minibatch_size, test_img, 28*28, test_label, 10);
         memcpy(nn->layers[0]->activations->data_host, x, 28*28 * minibatch_size * sizeof(double));     
         
-        forward(nn, sigmoid);
-        nn->layers[nn->number_of_layers-1]->activations->copyDeviceToHost();
+        forward(nn, 1);
         for (int col = 0; col < minibatch_size; col ++)
         {
             int idxTrainingData = col + i ;
@@ -154,7 +143,7 @@ int main(int argc, char *argv[])
     double *y = (double *) malloc(10 * minibatch_size * sizeof( double ));
 
     cudaMatrix* out = initCudaMatrix(10, minibatch_size);
-
+    
     for (int epoch = 0; epoch < 40; epoch ++)
     {
         START_CPUEVENT
@@ -165,9 +154,9 @@ int main(int argc, char *argv[])
         {
             populate_minibatch(x, y, shuffled_idx+i, minibatch_size, train_img, 28*28, train_label, 10);
             memcpy(nn->layers[0]->activations->data_host, x, 28 * 28 * minibatch_size * sizeof(double));
-            forward(nn, sigmoid);
+            forward(nn, 1);
             memcpy(out->data_host, y, 10 * minibatch_size * sizeof(double));            
-            backward(nn, out, dsigmoid);            
+            backward(nn, out, 2);            
         }     
         printf("epoch %d accuracy %lf\n", epoch, accuracy(test_img, test_label, ntest, minibatch_size, nn));
         STOP_AND_PRINT_CPUEVENT(process one epoch)

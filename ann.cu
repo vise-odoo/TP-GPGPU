@@ -121,7 +121,7 @@ void print_nn(ann_t *nn)
     }
 }
 
-void forward(ann_t *nn, double (*activation_function)(double))
+void forward(ann_t *nn, int activation_function)
 {
     for (int l = 1; l < nn->number_of_layers; l++)
     {
@@ -131,39 +131,27 @@ void forward(ann_t *nn, double (*activation_function)(double))
         for (int idx = 0; idx < one->columns*one->rows; idx++)
             (*one)[idx] = 1.0;
 
-        matrix_dot(nn->layers[l]->weights, nn->layers[l-1]->activations, z1); // z1 <- w^l x a^(l-1)
-        matrix_dot(nn->layers[l]->biases, one, z2); // z2 <- b^l x 1        
+        matrix_dot_Kernel(nn->layers[l]->weights, nn->layers[l-1]->activations, z1); // z1 <- w^l x a^(l-1)
+        matrix_dot_Kernel(nn->layers[l]->biases, one, z2); // z2 <- b^l x 1       
 
-        z1->copyHostToDevice();
-        z2->copyHostToDevice();
-        nn->layers[l]->z->copyHostToDevice();
-        matrix_sum_Kernel<<<32,32>>>(z1, z2, nn->layers[l]->z); // z^l <- z1 + z2 <=> z^l <- w^l x a^(l-1) + b^l x 1    
-        nn->layers[l]->z->copyDeviceToHost(); 
-
-        matrix_function_Kernel<<<32,32>>>(nn->layers[l]->z, activation_function, nn->layers[l]->activations); // a^l = f(z^l)
-        nn->layers[l]->activations->copyDeviceToHost(); 
-
+        matrix_sum_Kernel(z1, z2, nn->layers[l]->z); // z^l <- z1 + z2 <=> z^l <- w^l x a^(l-1) + b^l x 1
+        matrix_function_Kernel(nn->layers[l]->z, activation_function, nn->layers[l]->activations); // a^l = f(z^l)
+     
         z1->destroyCudaMatrix();
         z2->destroyCudaMatrix();
         one->destroyCudaMatrix();
     }
 }
 
-void backward(ann_t *nn, cudaMatrix *y, double (*derivative_actfunct)(double))
+void backward(ann_t *nn, cudaMatrix *y, int derivative_actfunct)
 {
     unsigned L = nn->number_of_layers-1;
 
     cudaMatrix *dfzL = initCudaMatrix(nn->layers[L]->number_of_neurons, nn->minibatch_size);
 
-    nn->layers[L]->activations->copyHostToDevice();
-    y ->copyHostToDevice();
-    matrix_minus_Kernel<<<32,32>>>(nn->layers[L]->activations, y, nn->layers[L]->delta);  // delta^(L) = (a^L - y)
-    // Pas de récupération de delta, car il est de nouveau utilisé dans hadamard product
-
-    nn->layers[L]->z->copyHostToDevice();
-    matrix_function_Kernel<<<32,32>>>(nn->layers[L]->z, derivative_actfunct, dfzL); // f'(z^(L))
-    hadamard_product_Kernel<<<32,32>>>(nn->layers[L]->delta, dfzL, nn->layers[L]->delta); // delta^(L) = (a^L - y) o f'(z^(L))
-    nn->layers[L]->delta->copyDeviceToHost();
+    matrix_minus_Kernel(nn->layers[L]->activations, y, nn->layers[L]->delta);  // delta^(L) = (a^L - y)
+    matrix_function_Kernel(nn->layers[L]->z, derivative_actfunct, dfzL); // f'(z^(L))
+    hadamard_product_Kernel(nn->layers[L]->delta, dfzL, nn->layers[L]->delta); // delta^(L) = (a^L - y) o f'(z^(L))
 
     dfzL->destroyCudaMatrix();
 
@@ -174,18 +162,10 @@ void backward(ann_t *nn, cudaMatrix *y, double (*derivative_actfunct)(double))
         delta_tmp = initCudaMatrix(nn->layers[l-1]->number_of_neurons, nn->minibatch_size);
         dfz = initCudaMatrix(nn->layers[l-1]->number_of_neurons, nn->minibatch_size);
 
-        nn->layers[l]->weights->copyHostToDevice();
-        matrix_transpose_Kernel<<<tw->columns, tw->rows>>>(nn->layers[l]->weights, tw); // (w^l)T      
-        tw->copyDeviceToHost();  
-        
-        matrix_dot(tw, nn->layers[l]->delta, delta_tmp); // (w^l)T x delta^l
-
-        nn->layers[l-1]->z->copyHostToDevice();
-        matrix_function_Kernel<<<32,32>>>(nn->layers[l-1]->z, derivative_actfunct, dfz); // f'(z^(l-1))
-
-        delta_tmp->copyHostToDevice();
-        hadamard_product_Kernel<<<32,32>>>(delta_tmp, dfz, nn->layers[l-1]->delta); // delta^(l-1) = (w^l)T x delta^l o f'(z^(l-1))
-        nn->layers[l-1]->delta->copyDeviceToHost();
+        matrix_transpose_Kernel(nn->layers[l]->weights, tw); // (w^l)T        
+        matrix_dot_Kernel(tw, nn->layers[l]->delta, delta_tmp); // (w^l)T x delta^l
+        matrix_function_Kernel(nn->layers[l-1]->z, derivative_actfunct, dfz); // f'(z^(l-1))
+        hadamard_product_Kernel(delta_tmp, dfz, nn->layers[l-1]->delta); // delta^(l-1) = (w^l)T x delta^l o f'(z^(l-1))
 
         tw->destroyCudaMatrix();
         delta_tmp->destroyCudaMatrix();
@@ -198,19 +178,10 @@ void backward(ann_t *nn, cudaMatrix *y, double (*derivative_actfunct)(double))
         w1 = initCudaMatrix(nn->layers[l]->number_of_neurons, nn->layers[l-1]->number_of_neurons);
         ta = initCudaMatrix(nn->minibatch_size, nn->layers[l-1]->number_of_neurons);
         
-        nn->layers[l-1]->activations->copyHostToDevice();
-        matrix_transpose_Kernel<<<ta->columns, ta->rows>>>(nn->layers[l-1]->activations, ta); // ta <- (a^(l-1))^T
-        ta -> copyDeviceToHost();
-
-        matrix_dot(nn->layers[l]->delta, ta, w1); // w1 <- delta^l x (a^(l-1))^T
-
-        w1->copyHostToDevice();
-        matrix_scalar_Kernel<<<32,32>>>(w1, nn->alpha / nn->minibatch_size, w1); // w1 <- alpha /m . delta^l x (a^(l-1))^T
-        // Pas de copy device to host de w1, puisque la fonction suivante utilise w1 dans le device
-
-        nn->layers[l]->weights->copyHostToDevice();
-        matrix_minus_Kernel<<<32,32>>>(nn->layers[l]->weights, w1, nn->layers[l]->weights); // w^l <- w^l - alpha /m . delta^l x (a^(l-1))^T
-        nn->layers[l]->weights->copyDeviceToHost();
+        matrix_transpose_Kernel(nn->layers[l-1]->activations, ta); // ta <- (a^(l-1))^T
+        matrix_dot_Kernel(nn->layers[l]->delta, ta, w1); // w1 <- delta^l x (a^(l-1))^T
+        matrix_scalar_Kernel(w1, nn->alpha / nn->minibatch_size, w1); // w1 <- alpha /m . delta^l x (a^(l-1))^T
+        matrix_minus_Kernel(nn->layers[l]->weights, w1, nn->layers[l]->weights); // w^l <- w^l - alpha /m . delta^l x (a^(l-1))^T
 
         w1->destroyCudaMatrix();
         ta->destroyCudaMatrix();
@@ -221,16 +192,10 @@ void backward(ann_t *nn, cudaMatrix *y, double (*derivative_actfunct)(double))
         for (int idx = 0; idx < one->columns*one->rows; idx++)
             (*one)[idx] = 1.0;
 
-        matrix_dot(nn->layers[l]->delta, one, b1); // b1 <- delta^l x 1^T
-
-        b1->copyHostToDevice();
-        matrix_scalar_Kernel<<<32,32>>>(b1,  nn->alpha / nn->minibatch_size, b1); // b1 <- alpha / m . delta^l x 1^T
-        // Pas de copy device to host de b1, puisque la fonction suivante utilise b1 dans le device
-
-        nn->layers[l]->biases->copyHostToDevice();
-        matrix_minus_Kernel<<<32,32>>>(nn->layers[l]->biases, b1, nn->layers[l]->biases); // b^l = b^l - alpha / m . delta^l x 1^T
-        nn->layers[l]->biases->copyDeviceToHost();
-
+        matrix_dot_Kernel(nn->layers[l]->delta, one, b1); // b1 <- delta^l x 1^T
+        matrix_scalar_Kernel(b1,  nn->alpha / nn->minibatch_size, b1); // b1 <- alpha / m . delta^l x 1^T
+        matrix_minus_Kernel(nn->layers[l]->biases, b1, nn->layers[l]->biases); // b^l = b^l - alpha / m . delta^l x 1^T
+        
         one->destroyCudaMatrix();
         b1->destroyCudaMatrix();
     }

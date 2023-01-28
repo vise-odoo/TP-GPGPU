@@ -1,16 +1,13 @@
 #include "matrix.h"
 #include "cudaMatrix.h"
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
-/* TODO : matrix dot
-Pistes d'amélioration : l'accès aux matrices est-il vraiment fait par le GPU ? (Comme m->data_device est utilisé)
-Dans ann, initmatrix est utilisé à chaque passage. Il y a peut-être d'autres moyens...
-*/
-
+// TODO : matrix dot , matrix hadamard, matrix transpose
 matrix_t * alloc_matrix(unsigned rows, unsigned columns)
 {
     matrix_t * res = (matrix_t*) malloc( sizeof(matrix_t) );
@@ -67,20 +64,29 @@ void hadamard_product(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
     }
 }
 
-__global__ void hadamard_product_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
+__global__ void hadamard_product_Device(double *m1, double *m2, double *res, int rows, int col)
+{
+    unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
+
+    if (idx < rows * col)
+    { 
+        res[idx] = m1[idx] * m2[idx];
+    }
+}
+
+void hadamard_product_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
 {
     assert ( (m1->columns == m2->columns)   &&
              (m1->columns == res->columns)  &&
              (m1->rows == m2->rows)         &&
              (m1->rows == res->rows));
 
-    unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
-
-    if (idx < m1->rows * m1->columns)
-    { 
-            res->data_device[idx] = m1->data_device[idx] * m2->data_device[idx];
-    }
+    m1->copyHostToDevice();
+    m2->copyHostToDevice();
+    hadamard_product_Device<<<8, 1024>>>(m1->data_device, m2->data_device, res->data_device, m1->rows, m1->columns);
+    res->copyDeviceToHost();
 }
+
 
 void matrix_sum(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
 {
@@ -95,19 +101,29 @@ void matrix_sum(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
     }
 }
 
-__global__ void matrix_sum_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
+__global__ void matrix_sum_Device(double *m1, double *m2, double *res, int rows, int col)
+{
+    unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
+
+    if (idx < rows * col)
+    { 
+        res[idx] = m1[idx] + m2[idx];
+    }
+}
+
+void matrix_sum_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
 {
     assert ( (m1->columns == m2->columns)  &&
              (m1->columns == res->columns) &&
              (m1->rows == m2->rows)        &&
              (m1->rows == res->rows));
 
-    unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
+    m1->copyHostToDevice();
+    m2->copyHostToDevice();
 
-    if (idx < m1->rows * m1->columns)
-    { 
-        res->data_device[idx] = m1->data_device[idx] + m2->data_device[idx];
-    }
+    matrix_sum_Device<<<8, 1024>>>(m1->data_device, m2->data_device, res->data_device, m1->rows, m1->columns);
+
+    res->copyDeviceToHost();
 }
 
 void matrix_minus(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
@@ -123,19 +139,29 @@ void matrix_minus(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
     }
 }
 
-__global__ void matrix_minus_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
+__global__ void matrix_minus_Device(double *m1, double *m2, double *res, int rows, int col)
+{
+    unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
+
+    if (idx < rows * col)
+    { 
+        res[idx] = m1[idx] - m2[idx];
+    }
+}
+
+void matrix_minus_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
 {
     assert ( (m1->columns == m2->columns)  &&
              (m1->columns == res->columns) &&
              (m1->rows == m2->rows)        &&
              (m1->rows == res->rows));
 
-    unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
+    m1->copyHostToDevice();
+    m2->copyHostToDevice();
 
-    if (idx < m1->rows * m1->columns)
-    { 
-        res->data_device[idx] = m1->data_device[idx] - m2->data_device[idx];
-    }
+    matrix_minus_Device<<<8, 1024>>>(m1->data_device, m2->data_device, res->data_device, m1->rows, m1->columns);
+
+    res->copyDeviceToHost();
 }
 
 void matrix_dot(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
@@ -161,6 +187,33 @@ void matrix_dot(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
     }
 }
 
+void matrix_dot_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
+{
+    assert ( (m1->columns == m2->rows)  &&
+             (m1->rows == res->rows)    &&
+             (m2->columns == res->columns));
+
+    m1->copyHostToDevice();
+    m2->copyHostToDevice();
+    matrix_dot_Device<<<8, (32,32)>>>(m1->data_device, m2->data_device, res->data_device, m1->rows,m1->columns, m2->columns);
+    res->copyDeviceToHost();
+}
+
+__global__ void matrix_dot_Device(double *m1,double *m2, double *res, int m, int n, int k)
+{ 
+    int row = blockIdx.y * blockDim.y + threadIdx.y; 
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+    int sum = 0;
+    if( col < k && row < m) 
+    {
+        for(int i = 0; i < n; i++) 
+        {
+            sum += m1[row * n + i] * m2[i * k + col];
+        }
+        res[row * k + col] = sum;
+    }
+} 
+
 void matrix_function(cudaMatrix *m1, double (*f)(double), cudaMatrix *res)
 {
     assert ( (m1->columns == res->columns) &&             
@@ -172,17 +225,50 @@ void matrix_function(cudaMatrix *m1, double (*f)(double), cudaMatrix *res)
     }
 }
 
-__global__ void matrix_function_Kernel(cudaMatrix *m1, double (*f)(double), cudaMatrix *res)
+__device__ double sigmoid(double x)
 {
-    assert ( (m1->columns == res->columns) &&             
-            (m1->rows == res->rows));
+    return 1 / (1 + exp(-x));
+}
 
+__device__ double dsigmoid(double x)
+{
+    return sigmoid(x)*(1-sigmoid(x));
+}
+
+__global__ void matrix_function_Device(double *m1, int fn, double *res, int rows, int col)
+{
     unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
 
-    if (idx < m1->rows * m1->columns)
-    { 
-        res->data_device[idx] = f(m1->data_device[idx]);
+    if (idx < rows * col)
+    {
+        switch (fn) {
+            case 1:
+                res[idx] = sigmoid(m1[idx]);
+                break;
+            case 2:
+                res[idx] = dsigmoid(m1[idx]);
+                break;
+            default:
+                res[idx] = 0;
+        }
     }
+}
+
+void matrix_function_Kernel(cudaMatrix *m1, int fn, cudaMatrix *res)
+{
+    // double (*f_device)(double);
+
+    assert ( (m1->columns == res->columns) &&             
+             (m1->rows == res->rows));
+
+
+    // cudaMalloc((void**)&f_device, sizeof(f));
+    // cudaMemcpy(f_device, f, sizeof(f), cudaMemcpyHostToDevice);
+    m1->copyHostToDevice(); 
+    matrix_function_Device<<<8, 1024>>>(m1->data_device, fn, res->data_device, m1->rows, m1->columns);
+    res->copyDeviceToHost();
+
+    // cudaFree(f_device);
 }
 
 void matrix_transpose(cudaMatrix *m1, cudaMatrix *res)
@@ -199,19 +285,55 @@ void matrix_transpose(cudaMatrix *m1, cudaMatrix *res)
     }
 }
 
-__global__ void matrix_transpose_Kernel(cudaMatrix *m1, cudaMatrix *res)
+__global__ void matrix_transpose_Device(double* m1, double* res, int rows, int cols) 
+{
+    unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    unsigned int idy = blockIdx.y * blockDim.y + threadIdx.y;
+
+    if (idx < cols && idy < rows) 
+    {
+        unsigned int index = idy * cols + idx;
+        unsigned int idx_transpose = idx * rows + idy;
+        m1[idx_transpose] = res[index];
+    }
+}
+
+__global__ void matrix_transpose_shared_Device(double* m1, double* res, int rows, int cols)
+{
+	__shared__ float shared[32][33]; // 33 car il peut y avoir des erreurs de sortie de tableaux parfois
+	
+	unsigned int xIndex = blockIdx.x * blockDim.x + threadIdx.x;
+	unsigned int yIndex = blockIdx.y * blockDim.y + threadIdx.y;
+	if((xIndex < rows) && (yIndex < cols))
+	{
+        // Ajout des données dans la mémoire partagée, de façon non transposée
+		unsigned int idx = yIndex * rows + xIndex; 
+		shared[threadIdx.y][threadIdx.x] = m1[idx];
+	}
+
+	__syncthreads();
+    // On recalcule les indices
+	xIndex = blockIdx.y * blockDim.x + threadIdx.x;
+	yIndex = blockIdx.x * blockDim.y + threadIdx.y;
+
+	if((xIndex < cols) && (yIndex < rows))
+	{
+		unsigned int idx_transpose = yIndex * cols + xIndex;
+        // Copie des données en transposant le résultat.
+		res[idx_transpose] = shared[threadIdx.x][threadIdx.y];
+	}
+}
+
+void matrix_transpose_Kernel(cudaMatrix *m1, cudaMatrix *res)
 {
     assert ( (m1->columns == res->rows) &&             
              (m1->rows == res->columns));
     
-    if (blockIdx.x < m1->rows)
-    {
-        if (threadIdx.x < m1->columns)
-        {
-            res->data_device[blockIdx.x + threadIdx.x * m1->rows] = res->data_device[threadIdx.x + blockIdx.x * m1->columns];
-        }
-    }
+    m1->copyHostToDevice();
+    matrix_transpose_Device<<<8, (32,32)>>>(m1->data_device, res->data_device, m1->rows, m1->columns);
+    res->copyDeviceToHost();
 }
+
 
 void matrix_scalar(cudaMatrix *m1, double s, cudaMatrix *res)
 {
@@ -224,17 +346,24 @@ void matrix_scalar(cudaMatrix *m1, double s, cudaMatrix *res)
     }
 }
 
-__global__ void matrix_scalar_Kernel(cudaMatrix *m1, double s, cudaMatrix *res)
+__global__ void matrix_scalar_Device(double *m1, double s, double *res, int rows, int col)
+{
+    unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
+
+    if (idx < rows * col)
+    { 
+        res[idx] = m1[idx] * s;
+    }
+}
+
+void matrix_scalar_Kernel(cudaMatrix *m1, double s, cudaMatrix *res)
 {
     assert ( (m1->rows == res->rows) &&             
              (m1->columns == res->columns));
 
-    unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
-
-    if (idx < m1->rows * m1->columns)
-    { 
-        res->data_device[idx] = m1->data_device[idx] * s;
-    }
+    m1->copyHostToDevice();
+    matrix_scalar_Device<<<8, 1024>>>(m1->data_device, s, res->data_device, m1->rows, m1->columns);
+    res->copyDeviceToHost();
 }
 
 void matrix_memcpy(cudaMatrix *dest, const cudaMatrix *src)

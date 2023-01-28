@@ -36,17 +36,19 @@ void matrix_scalar(cudaMatrix *m1, double s, cudaMatrix *res);
 
 void matrix_memcpy(cudaMatrix *dest, const cudaMatrix *src);
 
-__global__ void hadamard_product_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res);
+void matrix_sum_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res);
 
-__global__ void matrix_sum_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res);
+void matrix_minus_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res);
 
-__global__ void matrix_minus_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res);
+void matrix_scalar_Kernel(cudaMatrix *m1, double s, cudaMatrix *res);
 
-__global__ void matrix_transpose_Kernel(cudaMatrix *m1, cudaMatrix *res);
+void matrix_function_Kernel(cudaMatrix *m1, int fn, cudaMatrix *res);
 
-__global__ void matrix_scalar_Kernel(cudaMatrix *m1, double s, cudaMatrix *res);
+void hadamard_product_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res);
 
-__global__ void matrix_function_Kernel(cudaMatrix *m1, double (*f)(double), cudaMatrix *res);
+void matrix_dot_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res);
+
+void matrix_transpose_Kernel(cudaMatrix *m1, cudaMatrix *res);
 
 
 #endif
