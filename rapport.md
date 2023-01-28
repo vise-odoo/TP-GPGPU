@@ -143,8 +143,8 @@ Toutes les fonctions du fichier `matrix.cu` ont subi le traitement de ce parall�
 Le gain de temps est le suivant : 
 
 - En utilisant la structure `cudaMatrix` sur CPU, sans utiliser les fonctions parallélisées : **#TODO** s, soit une perte de temps de **#TODO** s.
-- Avec la structure `cudaMatrix` et les fonctions élementaires sur GPU (`matrix_sum_Kernel, matrix_minus_Kernel, matrix_scalar_Kernel, matrix_function_Kernel, hadamard_product_Kernel`) : **#TODO** s, soit une perte de temps de **#TODO** s.
-- Avec la structure `cudaMatrix` et toutes les fonctions sur le GPU, **#TODO** s, soit une perte de temps de **#TODO** s.
+- Avec la structure `cudaMatrix` et les fonctions élementaires sur GPU (`matrix_sum_Kernel, matrix_minus_Kernel, matrix_scalar_Kernel, matrix_function_Kernel, hadamard_product_Kernel`) : **#TODO** s, soit un gain de temps de **#TODO** s.
+- Avec la structure `cudaMatrix` et toutes les fonctions sur le GPU, **#TODO** s, soit un gain de temps de **#TODO** s.
 
 ### Parallélisation avancée
 
@@ -170,3 +170,5 @@ __global__ void matrix_transpose_shared_Device(double* m1, double* res, int rows
 }
 ```
 
+Le gain de temps est le suivant : 
+- Avec `matrix_transpose_shared`, le gain de temps est de **#TODO** s, soit un gain de temps de **#TODO** s.
