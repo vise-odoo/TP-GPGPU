@@ -204,13 +204,16 @@ __global__ void matrix_dot_Device(double *m1,double *m2, double *res, int m, int
 
 void matrix_dot_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
 {
+    dim3 dimGrid(8,8,1);
+    dim3 dimBlock(32,32,1);
+
     assert ( (m1->columns == m2->rows)  &&
              (m1->rows == res->rows)    &&
              (m2->columns == res->columns));
 
     m1->copyHostToDevice();
     m2->copyHostToDevice();
-    matrix_dot_Device<<<8, (32,32)>>>(m1->data_device, m2->data_device, res->data_device, m1->rows,m1->columns, m2->columns);
+    matrix_dot_Device<<<dimGrid, dimBlock>>>(m1->data_device, m2->data_device, res->data_device, m1->rows,m1->columns, m2->columns);
     res->copyDeviceToHost();
 }
 
@@ -326,11 +329,14 @@ __global__ void matrix_transpose_shared_Device(double* m1, double* res, int rows
 
 void matrix_transpose_Kernel(cudaMatrix *m1, cudaMatrix *res)
 {
+    dim3 dimGrid(8,8,1);
+    dim3 dimBlock(32,32,1);
+
     assert ( (m1->columns == res->rows) &&             
              (m1->rows == res->columns));
     
     m1->copyHostToDevice();
-    matrix_transpose_Device<<<8, (32,32)>>>(m1->data_device, res->data_device, m1->rows, m1->columns);
+    matrix_transpose_Device<<<dimGrid, dimBlock>>>(m1->data_device, res->data_device, m1->rows, m1->columns);
     res->copyDeviceToHost();
 }
 
