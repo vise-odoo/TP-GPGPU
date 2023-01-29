@@ -144,7 +144,7 @@ Le gain de temps est le suivant :
 
 - En utilisant la structure `cudaMatrix` sur CPU, sans utiliser les fonctions parallélisées : **#TODO** s, soit une perte de temps de **#TODO** s.
 - Avec la structure `cudaMatrix` et les fonctions élementaires sur GPU (`matrix_sum_Kernel, matrix_minus_Kernel, matrix_scalar_Kernel, matrix_function_Kernel, hadamard_product_Kernel`) : **#TODO** s, soit un gain de temps de **#TODO** s.
-- Avec la structure `cudaMatrix` et toutes les fonctions sur le GPU, 20 s/epoch, soit une perte de temps de 10 s/epoch.
+- Avec la structure `cudaMatrix` et toutes les fonctions sur le GPU, 6 s/epoch, soit un gain de temps de 4 s/epoch.
 
 ### Parallélisation avancée
 
