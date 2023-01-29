@@ -187,18 +187,6 @@ void matrix_dot(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
     }
 }
 
-void matrix_dot_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
-{
-    assert ( (m1->columns == m2->rows)  &&
-             (m1->rows == res->rows)    &&
-             (m2->columns == res->columns));
-
-    m1->copyHostToDevice();
-    m2->copyHostToDevice();
-    matrix_dot_Device<<<8, (32,32)>>>(m1->data_device, m2->data_device, res->data_device, m1->rows,m1->columns, m2->columns);
-    res->copyDeviceToHost();
-}
-
 __global__ void matrix_dot_Device(double *m1,double *m2, double *res, int m, int n, int k)
 { 
     int row = blockIdx.y * blockDim.y + threadIdx.y; 
@@ -213,6 +201,18 @@ __global__ void matrix_dot_Device(double *m1,double *m2, double *res, int m, int
         res[row * k + col] = sum;
     }
 } 
+
+void matrix_dot_Kernel(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
+{
+    assert ( (m1->columns == m2->rows)  &&
+             (m1->rows == res->rows)    &&
+             (m2->columns == res->columns));
+
+    m1->copyHostToDevice();
+    m2->copyHostToDevice();
+    matrix_dot_Device<<<8, (32,32)>>>(m1->data_device, m2->data_device, res->data_device, m1->rows,m1->columns, m2->columns);
+    res->copyDeviceToHost();
+}
 
 void matrix_function(cudaMatrix *m1, double (*f)(double), cudaMatrix *res)
 {

@@ -1,6 +1,6 @@
 # Table of Contents
 - [Table of Contents](#table-of-contents)
-- [TP Timothée - Vincent](#tp-timothée---vincent)
+- [TP Timothée MESNARD - Vincent SEVESTRE](#tp-timothée-mesnard---vincent-sevestre)
   - [Partie 1 : découverte du code fourni en C](#partie-1--découverte-du-code-fourni-en-c)
     - [Débugage du code en C](#débugage-du-code-en-c)
     - [Mise en place d'un time profiler](#mise-en-place-dun-time-profiler)
@@ -114,7 +114,7 @@ Cette implémentation naive a pour but de retirer la plupart des boucles `for` e
 
 Chacune de ces fonctions parallélisées est en deux parties : 
 
-- La première partie est de la forme `func_Kernel(cudaMatrix* m, ...)`, c'est ce type de fonction qui est appelé dans `main.cu`et `ann.cu`. Ces fonctions réalisent les instructions d'assertion, puis envoient le calcul sur le GPU pour le réaliser.
+- La première partie est de la forme `func_Kernel(cudaMatrix* m, ...)`, c'est ce type de fonction qui est appelé dans `main.cu` et `ann.cu`. Ces fonctions réalisent les instructions d'assertion, puis envoient le calcul sur le GPU pour le réaliser.
 
 - La seconde partie est de la forme `__global__ func_Device(double* m, ...)`. Ces fonctions effectuent le calcul sur le GPU.
 
@@ -144,7 +144,7 @@ Le gain de temps est le suivant :
 
 - En utilisant la structure `cudaMatrix` sur CPU, sans utiliser les fonctions parallélisées : **#TODO** s, soit une perte de temps de **#TODO** s.
 - Avec la structure `cudaMatrix` et les fonctions élementaires sur GPU (`matrix_sum_Kernel, matrix_minus_Kernel, matrix_scalar_Kernel, matrix_function_Kernel, hadamard_product_Kernel`) : **#TODO** s, soit un gain de temps de **#TODO** s.
-- Avec la structure `cudaMatrix` et toutes les fonctions sur le GPU, **#TODO** s, soit un gain de temps de **#TODO** s.
+- Avec la structure `cudaMatrix` et toutes les fonctions sur le GPU, 20 s/epoch, soit une perte de temps de 10 s/epoch.
 
 ### Parallélisation avancée
 
