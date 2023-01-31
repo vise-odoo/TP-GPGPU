@@ -294,11 +294,11 @@ __global__ void matrix_transpose_Device(double* m1, double* res, int rows, int c
     unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
     unsigned int idy = blockIdx.y * blockDim.y + threadIdx.y;
 
-    if (idx < cols && idy < rows) 
+    if (idx < rows && idy < cols) 
     {
-        unsigned int index = idy * cols + idx;
-        unsigned int idx_transpose = idx * rows + idy;
-        m1[idx_transpose] = res[index];
+        unsigned int idx_base = idy + cols * idx;
+        unsigned int idx_transpose = idy * rows + idx;
+        res[idx_transpose] = m1[idx_base];
     }
 }
 
