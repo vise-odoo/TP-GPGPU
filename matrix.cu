@@ -187,18 +187,19 @@ void matrix_dot(cudaMatrix *m1, cudaMatrix *m2, cudaMatrix *res)
     }
 }
 
-__global__ void matrix_dot_Device(double *m1,double *m2, double *res, int m, int n, int k)
+__global__ void matrix_dot_Device(double *m1,double *m2, double *res, int m1_rows, int m1_columns, int m2_columns)
 { 
-    int row = blockIdx.y * blockDim.y + threadIdx.y; 
-    int col = blockIdx.x * blockDim.x + threadIdx.x;
+    int row = blockIdx.x * blockDim.x + threadIdx.x; 
+    int col = blockIdx.y * blockDim.y + threadIdx.y;
     int sum = 0;
-    if( col < k && row < m) 
+    if( row < m1_rows && col < m2_columns) 
     {
-        for(int i = 0; i < n; i++) 
+        for(int i = 0; i < m1_columns; i++) 
         {
-            sum += m1[row * n + i] * m2[i * k + col];
+            sum += m1[i + row * m1_columns] * m2[col + i * m2_columns];
         }
-        res[row * k + col] = sum;
+        int idx = row * m2_columns + col;
+        res[idx] = sum;
     }
 } 
 
